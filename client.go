@@ -767,6 +767,25 @@ func (c *Client) ListAllSubvolumes(ctx context.Context, pool string) ([]Subvolum
 	return result, nil
 }
 
+// ResizeSubvolume changes the size of a subvolume (sparse image for block, quota for filesystem).
+func (c *Client) ResizeSubvolume(ctx context.Context, pool, name string, volsizeBytes uint64) (*Subvolume, error) {
+	klog.V(4).Infof("Resizing subvolume %s/%s to %d bytes", pool, name, volsizeBytes)
+
+	var result Subvolume
+	if err := c.Call(ctx, "subvolume.resize", []interface{}{
+		map[string]interface{}{
+			"pool":          pool,
+			"name":          name,
+			"volsize_bytes": volsizeBytes,
+		},
+	}, &result); err != nil {
+		return nil, fmt.Errorf("failed to resize subvolume %s/%s: %w", pool, name, err)
+	}
+
+	klog.V(4).Infof("Resized subvolume %s/%s to %d bytes", pool, name, volsizeBytes)
+	return &result, nil
+}
+
 // SetSubvolumeProperties sets xattr properties on a subvolume.
 func (c *Client) SetSubvolumeProperties(ctx context.Context, pool, name string, props map[string]string) (*Subvolume, error) {
 	klog.V(4).Infof("Setting %d properties on subvolume %s/%s", len(props), pool, name)
@@ -902,6 +921,26 @@ func (c *Client) ListSnapshots(ctx context.Context, pool string) ([]Snapshot, er
 
 	klog.V(4).Infof("Found %d snapshots in pool %s", len(result), pool)
 	return result, nil
+}
+
+// CloneSnapshot creates a new writable subvolume from a snapshot.
+func (c *Client) CloneSnapshot(ctx context.Context, params SnapshotCloneParams) (*Subvolume, error) {
+	klog.V(4).Infof("Cloning snapshot %s/%s@%s to %s", params.Pool, params.Subvolume, params.Snapshot, params.NewName)
+
+	var result Subvolume
+	if err := c.Call(ctx, "snapshot.clone", []interface{}{
+		map[string]interface{}{
+			"pool":      params.Pool,
+			"subvolume": params.Subvolume,
+			"snapshot":  params.Snapshot,
+			"new_name":  params.NewName,
+		},
+	}, &result); err != nil {
+		return nil, fmt.Errorf("failed to clone snapshot %s/%s@%s: %w", params.Pool, params.Subvolume, params.Snapshot, err)
+	}
+
+	klog.V(4).Infof("Cloned snapshot to subvolume %s/%s", params.Pool, params.NewName)
+	return &result, nil
 }
 
 // CreateNFSShare creates a new NFS share.

@@ -18,6 +18,7 @@ type ClientInterface interface {
 	DeleteSubvolume(ctx context.Context, pool, name string) error
 	GetSubvolume(ctx context.Context, pool, name string) (*Subvolume, error)
 	ListAllSubvolumes(ctx context.Context, pool string) ([]Subvolume, error)
+	ResizeSubvolume(ctx context.Context, pool, name string, volsizeBytes uint64) (*Subvolume, error)
 
 	// Properties (xattrs)
 	SetSubvolumeProperties(ctx context.Context, pool, name string, props map[string]string) (*Subvolume, error)
@@ -30,6 +31,7 @@ type ClientInterface interface {
 	CreateSnapshot(ctx context.Context, params SnapshotCreateParams) (*Snapshot, error)
 	DeleteSnapshot(ctx context.Context, pool, subvolume, name string) error
 	ListSnapshots(ctx context.Context, pool string) ([]Snapshot, error)
+	CloneSnapshot(ctx context.Context, params SnapshotCloneParams) (*Subvolume, error)
 
 	// NFS
 	CreateNFSShare(ctx context.Context, params NFSShareCreateParams) (*NFSShare, error)
@@ -112,6 +114,14 @@ type SnapshotCreateParams struct {
 	Subvolume string `json:"subvolume"`
 	Name      string `json:"name"`
 	ReadOnly  bool   `json:"read_only,omitempty"`
+}
+
+// SnapshotCloneParams holds parameters for cloning a snapshot into a new writable subvolume.
+type SnapshotCloneParams struct {
+	Pool      string `json:"pool"`
+	Subvolume string `json:"subvolume"`
+	Snapshot  string `json:"snapshot"`
+	NewName   string `json:"new_name"`
 }
 
 // NFSShare represents a NASty NFS share.
