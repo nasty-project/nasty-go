@@ -19,6 +19,7 @@ type ClientInterface interface {
 	GetSubvolume(ctx context.Context, pool, name string) (*Subvolume, error)
 	ListAllSubvolumes(ctx context.Context, pool string) ([]Subvolume, error)
 	ResizeSubvolume(ctx context.Context, pool, name string, volsizeBytes uint64) (*Subvolume, error)
+	CloneSubvolume(ctx context.Context, pool, name, newName string) (*Subvolume, error)
 
 	// Properties (xattrs)
 	SetSubvolumeProperties(ctx context.Context, pool, name string, props map[string]string) (*Subvolume, error)

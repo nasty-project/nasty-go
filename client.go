@@ -786,6 +786,27 @@ func (c *Client) ResizeSubvolume(ctx context.Context, pool, name string, volsize
 	return &result, nil
 }
 
+// CloneSubvolume creates a writable COW clone of a subvolume.
+// This is bcachefs's native O(1) clone — a writable snapshot that shares data
+// blocks with the source via copy-on-write.
+func (c *Client) CloneSubvolume(ctx context.Context, pool, name, newName string) (*Subvolume, error) {
+	klog.V(4).Infof("Cloning subvolume %s/%s to %s", pool, name, newName)
+
+	var result Subvolume
+	if err := c.Call(ctx, "subvolume.clone", []interface{}{
+		map[string]interface{}{
+			"pool":     pool,
+			"name":     name,
+			"new_name": newName,
+		},
+	}, &result); err != nil {
+		return nil, fmt.Errorf("failed to clone subvolume %s/%s: %w", pool, name, err)
+	}
+
+	klog.V(4).Infof("Cloned subvolume %s/%s to %s/%s", pool, name, pool, newName)
+	return &result, nil
+}
+
 // SetSubvolumeProperties sets xattr properties on a subvolume.
 func (c *Client) SetSubvolumeProperties(ctx context.Context, pool, name string, props map[string]string) (*Subvolume, error) {
 	klog.V(4).Infof("Setting %d properties on subvolume %s/%s", len(props), pool, name)
