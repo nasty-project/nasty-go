@@ -74,10 +74,10 @@ type Client struct {
 
 // Request represents a storage API WebSocket request (JSON-RPC 2.0 format).
 type Request struct {
-	ID      string        `json:"id"`
-	JSONRPC string        `json:"jsonrpc"`
-	Method  string        `json:"method"`
-	Params  []interface{} `json:"params,omitempty"`
+	ID      string      `json:"id"`
+	JSONRPC string      `json:"jsonrpc"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params,omitempty"`
 }
 
 // Response represents a storage API WebSocket response.
@@ -358,7 +358,7 @@ func isConnectionError(err error) bool {
 }
 
 // Call makes a JSON-RPC 2.0 call with automatic retry on connection failures.
-func (c *Client) Call(ctx context.Context, method string, params []interface{}, result interface{}) error {
+func (c *Client) Call(ctx context.Context, method string, params interface{}, result interface{}) error {
 	start := time.Now()
 	defer func() { c.metrics.RecordMessageDuration(method, time.Since(start)) }()
 
@@ -407,7 +407,7 @@ func (c *Client) Call(ctx context.Context, method string, params []interface{}, 
 }
 
 // callOnce makes a single JSON-RPC 2.0 call attempt.
-func (c *Client) callOnce(ctx context.Context, method string, params []interface{}, result interface{}) error {
+func (c *Client) callOnce(ctx context.Context, method string, params interface{}, result interface{}) error {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -691,9 +691,7 @@ func (c *Client) QueryPool(ctx context.Context, poolName string) (*Pool, error) 
 	klog.V(4).Infof("Querying pool: %s", poolName)
 
 	var result Pool
-	if err := c.Call(ctx, "pool.get", []interface{}{
-		map[string]interface{}{"name": poolName},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "pool.get", map[string]interface{}{"name": poolName}, &result); err != nil {
 		return nil, fmt.Errorf("failed to query pool %s: %w", poolName, err)
 	}
 
@@ -707,16 +705,14 @@ func (c *Client) CreateSubvolume(ctx context.Context, params SubvolumeCreatePara
 	klog.V(4).Infof("Creating subvolume %s/%s (type=%s)", params.Pool, params.Name, params.SubvolumeType)
 
 	var result Subvolume
-	if err := c.Call(ctx, "subvolume.create", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "subvolume.create", map[string]interface{}{
 			"pool":           params.Pool,
 			"name":           params.Name,
 			"subvolume_type": params.SubvolumeType,
 			"volsize_bytes":  params.VolsizeBytes,
 			"compression":    params.Compression,
 			"comments":       params.Comments,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to create subvolume %s/%s: %w", params.Pool, params.Name, err)
 	}
 
@@ -728,9 +724,7 @@ func (c *Client) CreateSubvolume(ctx context.Context, params SubvolumeCreatePara
 func (c *Client) DeleteSubvolume(ctx context.Context, pool, name string) error {
 	klog.V(4).Infof("Deleting subvolume %s/%s", pool, name)
 
-	if err := c.Call(ctx, "subvolume.delete", []interface{}{
-		map[string]interface{}{"pool": pool, "name": name},
-	}, nil); err != nil {
+	if err := c.Call(ctx, "subvolume.delete", map[string]interface{}{"pool": pool, "name": name}, nil); err != nil {
 		return fmt.Errorf("failed to delete subvolume %s/%s: %w", pool, name, err)
 	}
 
@@ -743,9 +737,7 @@ func (c *Client) GetSubvolume(ctx context.Context, pool, name string) (*Subvolum
 	klog.V(4).Infof("Getting subvolume %s/%s", pool, name)
 
 	var result Subvolume
-	if err := c.Call(ctx, "subvolume.get", []interface{}{
-		map[string]interface{}{"pool": pool, "name": name},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "subvolume.get", map[string]interface{}{"pool": pool, "name": name}, &result); err != nil {
 		return nil, fmt.Errorf("failed to get subvolume %s/%s: %w", pool, name, err)
 	}
 
@@ -757,9 +749,7 @@ func (c *Client) ListAllSubvolumes(ctx context.Context, pool string) ([]Subvolum
 	klog.V(4).Infof("Listing subvolumes in pool %s", pool)
 
 	var result []Subvolume
-	if err := c.Call(ctx, "subvolume.list_all", []interface{}{
-		map[string]interface{}{"pool": pool},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "subvolume.list_all", map[string]interface{}{"pool": pool}, &result); err != nil {
 		return nil, fmt.Errorf("failed to list subvolumes in pool %s: %w", pool, err)
 	}
 
@@ -772,13 +762,11 @@ func (c *Client) ResizeSubvolume(ctx context.Context, pool, name string, volsize
 	klog.V(4).Infof("Resizing subvolume %s/%s to %d bytes", pool, name, volsizeBytes)
 
 	var result Subvolume
-	if err := c.Call(ctx, "subvolume.resize", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "subvolume.resize", map[string]interface{}{
 			"pool":          pool,
 			"name":          name,
 			"volsize_bytes": volsizeBytes,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to resize subvolume %s/%s: %w", pool, name, err)
 	}
 
@@ -793,13 +781,11 @@ func (c *Client) CloneSubvolume(ctx context.Context, pool, name, newName string)
 	klog.V(4).Infof("Cloning subvolume %s/%s to %s", pool, name, newName)
 
 	var result Subvolume
-	if err := c.Call(ctx, "subvolume.clone", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "subvolume.clone", map[string]interface{}{
 			"pool":     pool,
 			"name":     name,
 			"new_name": newName,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to clone subvolume %s/%s: %w", pool, name, err)
 	}
 
@@ -812,13 +798,11 @@ func (c *Client) SetSubvolumeProperties(ctx context.Context, pool, name string, 
 	klog.V(4).Infof("Setting %d properties on subvolume %s/%s", len(props), pool, name)
 
 	var result Subvolume
-	if err := c.Call(ctx, "subvolume.set_properties", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "subvolume.set_properties", map[string]interface{}{
 			"pool":       pool,
 			"name":       name,
 			"properties": props,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to set properties on subvolume %s/%s: %w", pool, name, err)
 	}
 
@@ -831,13 +815,11 @@ func (c *Client) RemoveSubvolumeProperties(ctx context.Context, pool, name strin
 	klog.V(4).Infof("Removing %d properties from subvolume %s/%s", len(keys), pool, name)
 
 	var result Subvolume
-	if err := c.Call(ctx, "subvolume.remove_properties", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "subvolume.remove_properties", map[string]interface{}{
 			"pool": pool,
 			"name": name,
 			"keys": keys,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to remove properties from subvolume %s/%s: %w", pool, name, err)
 	}
 
@@ -849,13 +831,14 @@ func (c *Client) FindSubvolumesByProperty(ctx context.Context, key, value, pool 
 	klog.V(4).Infof("Finding subvolumes with %s=%s in pool %s", key, value, pool)
 
 	var result []Subvolume
-	if err := c.Call(ctx, "subvolume.find_by_property", []interface{}{
-		map[string]interface{}{
-			"key":   key,
-			"value": value,
-			"pool":  pool,
-		},
-	}, &result); err != nil {
+	params := map[string]interface{}{
+		"key":   key,
+		"value": value,
+	}
+	if pool != "" {
+		params["pool"] = pool
+	}
+	if err := c.Call(ctx, "subvolume.find_by_property", params, &result); err != nil {
 		return nil, fmt.Errorf("failed to find subvolumes by property %s=%s: %w", key, value, err)
 	}
 
@@ -896,14 +879,12 @@ func (c *Client) CreateSnapshot(ctx context.Context, params SnapshotCreateParams
 	klog.V(4).Infof("Creating snapshot %s on subvolume %s/%s", params.Name, params.Pool, params.Subvolume)
 
 	var result Snapshot
-	if err := c.Call(ctx, "snapshot.create", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "snapshot.create", map[string]interface{}{
 			"pool":      params.Pool,
 			"subvolume": params.Subvolume,
 			"name":      params.Name,
 			"read_only": params.ReadOnly,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to create snapshot %s/%s@%s: %w", params.Pool, params.Subvolume, params.Name, err)
 	}
 
@@ -915,13 +896,11 @@ func (c *Client) CreateSnapshot(ctx context.Context, params SnapshotCreateParams
 func (c *Client) DeleteSnapshot(ctx context.Context, pool, subvolume, name string) error {
 	klog.V(4).Infof("Deleting snapshot %s/%s@%s", pool, subvolume, name)
 
-	if err := c.Call(ctx, "snapshot.delete", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "snapshot.delete", map[string]interface{}{
 			"pool":      pool,
 			"subvolume": subvolume,
 			"name":      name,
-		},
-	}, nil); err != nil {
+		}, nil); err != nil {
 		return fmt.Errorf("failed to delete snapshot %s/%s@%s: %w", pool, subvolume, name, err)
 	}
 
@@ -934,9 +913,7 @@ func (c *Client) ListSnapshots(ctx context.Context, pool string) ([]Snapshot, er
 	klog.V(4).Infof("Listing snapshots in pool %s", pool)
 
 	var result []Snapshot
-	if err := c.Call(ctx, "snapshot.list", []interface{}{
-		map[string]interface{}{"pool": pool},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "snapshot.list", map[string]interface{}{"pool": pool}, &result); err != nil {
 		return nil, fmt.Errorf("failed to list snapshots in pool %s: %w", pool, err)
 	}
 
@@ -949,14 +926,12 @@ func (c *Client) CloneSnapshot(ctx context.Context, params SnapshotCloneParams) 
 	klog.V(4).Infof("Cloning snapshot %s/%s@%s to %s", params.Pool, params.Subvolume, params.Snapshot, params.NewName)
 
 	var result Subvolume
-	if err := c.Call(ctx, "snapshot.clone", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "snapshot.clone", map[string]interface{}{
 			"pool":      params.Pool,
 			"subvolume": params.Subvolume,
 			"snapshot":  params.Snapshot,
 			"new_name":  params.NewName,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to clone snapshot %s/%s@%s: %w", params.Pool, params.Subvolume, params.Snapshot, err)
 	}
 
@@ -969,14 +944,12 @@ func (c *Client) CreateNFSShare(ctx context.Context, params NFSShareCreateParams
 	klog.V(4).Infof("Creating NFS share for path: %s", params.Path)
 
 	var result NFSShare
-	if err := c.Call(ctx, "share.nfs.create", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "share.nfs.create", map[string]interface{}{
 			"path":    params.Path,
 			"comment": params.Comment,
 			"clients": params.Clients,
 			"enabled": params.Enabled,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to create NFS share for %s: %w", params.Path, err)
 	}
 
@@ -988,9 +961,7 @@ func (c *Client) CreateNFSShare(ctx context.Context, params NFSShareCreateParams
 func (c *Client) DeleteNFSShare(ctx context.Context, id string) error {
 	klog.V(4).Infof("Deleting NFS share %s", id)
 
-	if err := c.Call(ctx, "share.nfs.delete", []interface{}{
-		map[string]interface{}{"id": id},
-	}, nil); err != nil {
+	if err := c.Call(ctx, "share.nfs.delete", map[string]interface{}{"id": id}, nil); err != nil {
 		return fmt.Errorf("failed to delete NFS share %s: %w", id, err)
 	}
 
@@ -1003,9 +974,7 @@ func (c *Client) ListNFSShares(ctx context.Context) ([]NFSShare, error) {
 	klog.V(4).Info("Listing NFS shares")
 
 	var result []NFSShare
-	if err := c.Call(ctx, "share.nfs.list", []interface{}{
-		map[string]interface{}{},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "share.nfs.list", map[string]interface{}{}, &result); err != nil {
 		return nil, fmt.Errorf("failed to list NFS shares: %w", err)
 	}
 
@@ -1018,9 +987,7 @@ func (c *Client) GetNFSShare(ctx context.Context, id string) (*NFSShare, error) 
 	klog.V(4).Infof("Getting NFS share %s", id)
 
 	var result NFSShare
-	if err := c.Call(ctx, "share.nfs.get", []interface{}{
-		map[string]interface{}{"id": id},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "share.nfs.get", map[string]interface{}{"id": id}, &result); err != nil {
 		return nil, fmt.Errorf("failed to get NFS share %s: %w", id, err)
 	}
 
@@ -1032,13 +999,11 @@ func (c *Client) CreateSMBShare(ctx context.Context, params SMBShareCreateParams
 	klog.V(4).Infof("Creating SMB share %q for path: %s", params.Name, params.Path)
 
 	var result SMBShare
-	if err := c.Call(ctx, "share.smb.create", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "share.smb.create", map[string]interface{}{
 			"name":    params.Name,
 			"path":    params.Path,
 			"comment": params.Comment,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to create SMB share %q: %w", params.Name, err)
 	}
 
@@ -1050,9 +1015,7 @@ func (c *Client) CreateSMBShare(ctx context.Context, params SMBShareCreateParams
 func (c *Client) DeleteSMBShare(ctx context.Context, id string) error {
 	klog.V(4).Infof("Deleting SMB share %s", id)
 
-	if err := c.Call(ctx, "share.smb.delete", []interface{}{
-		map[string]interface{}{"id": id},
-	}, nil); err != nil {
+	if err := c.Call(ctx, "share.smb.delete", map[string]interface{}{"id": id}, nil); err != nil {
 		return fmt.Errorf("failed to delete SMB share %s: %w", id, err)
 	}
 
@@ -1065,9 +1028,7 @@ func (c *Client) ListSMBShares(ctx context.Context) ([]SMBShare, error) {
 	klog.V(4).Info("Listing SMB shares")
 
 	var result []SMBShare
-	if err := c.Call(ctx, "share.smb.list", []interface{}{
-		map[string]interface{}{},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "share.smb.list", map[string]interface{}{}, &result); err != nil {
 		return nil, fmt.Errorf("failed to list SMB shares: %w", err)
 	}
 
@@ -1080,9 +1041,7 @@ func (c *Client) GetSMBShare(ctx context.Context, id string) (*SMBShare, error) 
 	klog.V(4).Infof("Getting SMB share %s", id)
 
 	var result SMBShare
-	if err := c.Call(ctx, "share.smb.get", []interface{}{
-		map[string]interface{}{"id": id},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "share.smb.get", map[string]interface{}{"id": id}, &result); err != nil {
 		return nil, fmt.Errorf("failed to get SMB share %s: %w", id, err)
 	}
 
@@ -1094,12 +1053,10 @@ func (c *Client) CreateISCSITarget(ctx context.Context, params ISCSITargetCreate
 	klog.V(4).Infof("Creating iSCSI target %q", params.Name)
 
 	var result ISCSITarget
-	if err := c.Call(ctx, "share.iscsi.create", []interface{}{
-		map[string]interface{}{
-			"name":    params.Name,
-			"alias":   nil,
-			"portals": []map[string]interface{}{{"ip": "0.0.0.0", "port": 3260}},
-		},
+	if err := c.Call(ctx, "share.iscsi.create", map[string]interface{}{
+		"name":    params.Name,
+		"alias":   nil,
+		"portals": []map[string]interface{}{{"ip": "0.0.0.0", "port": 3260}},
 	}, &result); err != nil {
 		return nil, fmt.Errorf("failed to create iSCSI target %q: %w", params.Name, err)
 	}
@@ -1113,12 +1070,10 @@ func (c *Client) AddISCSILun(ctx context.Context, targetID, backstorePath string
 	klog.V(4).Infof("Adding LUN %s to iSCSI target %s", backstorePath, targetID)
 
 	var result ISCSITarget
-	if err := c.Call(ctx, "share.iscsi.add_lun", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "share.iscsi.add_lun", map[string]interface{}{
 			"id":             targetID,
 			"backstore_path": backstorePath,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to add LUN %s to iSCSI target %s: %w", backstorePath, targetID, err)
 	}
 
@@ -1131,12 +1086,10 @@ func (c *Client) AddISCSIACL(ctx context.Context, targetID, initiatorIQN string)
 	klog.V(4).Infof("Adding ACL %s to iSCSI target %s", initiatorIQN, targetID)
 
 	var result ISCSITarget
-	if err := c.Call(ctx, "share.iscsi.add_acl", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "share.iscsi.add_acl", map[string]interface{}{
 			"id":            targetID,
 			"initiator_iqn": initiatorIQN,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to add ACL %s to iSCSI target %s: %w", initiatorIQN, targetID, err)
 	}
 
@@ -1148,9 +1101,7 @@ func (c *Client) AddISCSIACL(ctx context.Context, targetID, initiatorIQN string)
 func (c *Client) DeleteISCSITarget(ctx context.Context, id string) error {
 	klog.V(4).Infof("Deleting iSCSI target %s", id)
 
-	if err := c.Call(ctx, "share.iscsi.delete", []interface{}{
-		map[string]interface{}{"id": id},
-	}, nil); err != nil {
+	if err := c.Call(ctx, "share.iscsi.delete", map[string]interface{}{"id": id}, nil); err != nil {
 		return fmt.Errorf("failed to delete iSCSI target %s: %w", id, err)
 	}
 
@@ -1163,9 +1114,7 @@ func (c *Client) ListISCSITargets(ctx context.Context) ([]ISCSITarget, error) {
 	klog.V(4).Info("Listing iSCSI targets")
 
 	var result []ISCSITarget
-	if err := c.Call(ctx, "share.iscsi.list", []interface{}{
-		map[string]interface{}{},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "share.iscsi.list", map[string]interface{}{}, &result); err != nil {
 		return nil, fmt.Errorf("failed to list iSCSI targets: %w", err)
 	}
 
@@ -1199,15 +1148,13 @@ func (c *Client) CreateNVMeOFSubsystem(ctx context.Context, params NVMeOFCreateP
 	klog.V(4).Infof("Creating NVMe-oF subsystem %q (device=%s)", params.Name, params.DevicePath)
 
 	var result NVMeOFSubsystem
-	if err := c.Call(ctx, "share.nvmeof.create_quick", []interface{}{
-		map[string]interface{}{
+	if err := c.Call(ctx, "share.nvmeof.create_quick", map[string]interface{}{
 			"name":        params.Name,
 			"device_path": params.DevicePath,
 			"addr":        params.Addr,
 			"port":        params.Port,
 			"hosts":       params.Hosts,
-		},
-	}, &result); err != nil {
+		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to create NVMe-oF subsystem %q: %w", params.Name, err)
 	}
 
@@ -1219,9 +1166,7 @@ func (c *Client) CreateNVMeOFSubsystem(ctx context.Context, params NVMeOFCreateP
 func (c *Client) DeleteNVMeOFSubsystem(ctx context.Context, id string) error {
 	klog.V(4).Infof("Deleting NVMe-oF subsystem %s", id)
 
-	if err := c.Call(ctx, "share.nvmeof.delete", []interface{}{
-		map[string]interface{}{"id": id},
-	}, nil); err != nil {
+	if err := c.Call(ctx, "share.nvmeof.delete", map[string]interface{}{"id": id}, nil); err != nil {
 		return fmt.Errorf("failed to delete NVMe-oF subsystem %s: %w", id, err)
 	}
 
@@ -1234,9 +1179,7 @@ func (c *Client) ListNVMeOFSubsystems(ctx context.Context) ([]NVMeOFSubsystem, e
 	klog.V(4).Info("Listing NVMe-oF subsystems")
 
 	var result []NVMeOFSubsystem
-	if err := c.Call(ctx, "share.nvmeof.list", []interface{}{
-		map[string]interface{}{},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "share.nvmeof.list", map[string]interface{}{}, &result); err != nil {
 		return nil, fmt.Errorf("failed to list NVMe-oF subsystems: %w", err)
 	}
 
