@@ -159,9 +159,10 @@ type SMBShare struct {
 
 // SMBShareCreateParams holds parameters for SMB share creation.
 type SMBShareCreateParams struct {
-	Name    string `json:"name"`
-	Path    string `json:"path"`
-	Comment string `json:"comment,omitempty"`
+	Name       string   `json:"name"`
+	Path       string   `json:"path"`
+	Comment    string   `json:"comment,omitempty"`
+	ValidUsers []string `json:"valid_users,omitempty"`
 }
 
 // ISCSIPortal represents an iSCSI portal.

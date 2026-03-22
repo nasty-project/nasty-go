@@ -999,11 +999,15 @@ func (c *Client) CreateSMBShare(ctx context.Context, params SMBShareCreateParams
 	klog.V(4).Infof("Creating SMB share %q for path: %s", params.Name, params.Path)
 
 	var result SMBShare
-	if err := c.Call(ctx, "share.smb.create", map[string]interface{}{
-			"name":    params.Name,
-			"path":    params.Path,
-			"comment": params.Comment,
-		}, &result); err != nil {
+	callParams := map[string]interface{}{
+		"name":    params.Name,
+		"path":    params.Path,
+		"comment": params.Comment,
+	}
+	if len(params.ValidUsers) > 0 {
+		callParams["valid_users"] = params.ValidUsers
+	}
+	if err := c.Call(ctx, "share.smb.create", callParams, &result); err != nil {
 		return nil, fmt.Errorf("failed to create SMB share %q: %w", params.Name, err)
 	}
 
