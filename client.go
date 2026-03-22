@@ -1071,7 +1071,7 @@ func (c *Client) AddISCSILun(ctx context.Context, targetID, backstorePath string
 
 	var result ISCSITarget
 	if err := c.Call(ctx, "share.iscsi.add_lun", map[string]interface{}{
-			"id":             targetID,
+			"target_id":      targetID,
 			"backstore_path": backstorePath,
 		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to add LUN %s to iSCSI target %s: %w", backstorePath, targetID, err)
@@ -1087,7 +1087,7 @@ func (c *Client) AddISCSIACL(ctx context.Context, targetID, initiatorIQN string)
 
 	var result ISCSITarget
 	if err := c.Call(ctx, "share.iscsi.add_acl", map[string]interface{}{
-			"id":            targetID,
+			"target_id":     targetID,
 			"initiator_iqn": initiatorIQN,
 		}, &result); err != nil {
 		return nil, fmt.Errorf("failed to add ACL %s to iSCSI target %s: %w", initiatorIQN, targetID, err)
