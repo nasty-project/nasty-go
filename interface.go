@@ -192,7 +192,16 @@ type ISCSITarget struct {
 
 // ISCSITargetCreateParams holds parameters for iSCSI target creation.
 type ISCSITargetCreateParams struct {
-	Name string `json:"name"`
+	Name       string   `json:"name"`
+	DevicePath string   `json:"device_path,omitempty"`
+	Acls       []ACLEntry `json:"acls,omitempty"`
+}
+
+// ACLEntry represents an initiator ACL for iSCSI target creation.
+type ACLEntry struct {
+	InitiatorIQN string `json:"initiator_iqn"`
+	UserID       string `json:"userid,omitempty"`
+	Password     string `json:"password,omitempty"`
 }
 
 // NVMeOFNamespace represents a namespace within an NVMe-oF subsystem.
@@ -223,11 +232,11 @@ type NVMeOFSubsystem struct {
 
 // NVMeOFCreateParams holds parameters for NVMe-oF subsystem creation.
 type NVMeOFCreateParams struct {
-	Name       string   `json:"name"`
-	DevicePath string   `json:"device_path"`
-	Addr       string   `json:"addr,omitempty"`
-	Port       *uint16  `json:"port,omitempty"`
-	Hosts      []string `json:"hosts,omitempty"`
+	Name         string   `json:"name"`
+	DevicePath   string   `json:"device_path,omitempty"`
+	Addr         string   `json:"addr,omitempty"`
+	Port         *uint16  `json:"port,omitempty"`
+	AllowedHosts []string `json:"allowed_hosts,omitempty"`
 }
 
 // Verify that Client implements ClientInterface at compile time.

@@ -1052,16 +1052,22 @@ func (c *Client) GetSMBShare(ctx context.Context, id string) (*SMBShare, error) 
 	return &result, nil
 }
 
-// CreateISCSITarget creates a new iSCSI target (empty, no LUNs).
+// CreateISCSITarget creates a new iSCSI target with optional LUN and ACLs.
 func (c *Client) CreateISCSITarget(ctx context.Context, params ISCSITargetCreateParams) (*ISCSITarget, error) {
 	klog.V(4).Infof("Creating iSCSI target %q", params.Name)
 
+	rpcParams := map[string]interface{}{
+		"name": params.Name,
+	}
+	if params.DevicePath != "" {
+		rpcParams["device_path"] = params.DevicePath
+	}
+	if len(params.Acls) > 0 {
+		rpcParams["acls"] = params.Acls
+	}
+
 	var result ISCSITarget
-	if err := c.Call(ctx, "share.iscsi.create", map[string]interface{}{
-		"name":    params.Name,
-		"alias":   nil,
-		"portals": []map[string]interface{}{{"ip": "0.0.0.0", "port": 3260}},
-	}, &result); err != nil {
+	if err := c.Call(ctx, "share.iscsi.create", rpcParams, &result); err != nil {
 		return nil, fmt.Errorf("failed to create iSCSI target %q: %w", params.Name, err)
 	}
 
@@ -1147,18 +1153,28 @@ func (c *Client) GetISCSITargetByIQN(ctx context.Context, iqn string) (*ISCSITar
 	return nil, nil //nolint:nilnil // nil, nil indicates "not found"
 }
 
-// CreateNVMeOFSubsystem creates a new NVMe-oF subsystem using the quick-create API.
+// CreateNVMeOFSubsystem creates a new NVMe-oF subsystem with optional namespace, port, and host ACLs.
 func (c *Client) CreateNVMeOFSubsystem(ctx context.Context, params NVMeOFCreateParams) (*NVMeOFSubsystem, error) {
 	klog.V(4).Infof("Creating NVMe-oF subsystem %q (device=%s)", params.Name, params.DevicePath)
 
+	rpcParams := map[string]interface{}{
+		"name": params.Name,
+	}
+	if params.DevicePath != "" {
+		rpcParams["device_path"] = params.DevicePath
+	}
+	if params.Addr != "" {
+		rpcParams["addr"] = params.Addr
+	}
+	if params.Port != nil {
+		rpcParams["port"] = params.Port
+	}
+	if len(params.AllowedHosts) > 0 {
+		rpcParams["allowed_hosts"] = params.AllowedHosts
+	}
+
 	var result NVMeOFSubsystem
-	if err := c.Call(ctx, "share.nvmeof.create_quick", map[string]interface{}{
-			"name":        params.Name,
-			"device_path": params.DevicePath,
-			"addr":        params.Addr,
-			"port":        params.Port,
-			"hosts":       params.Hosts,
-		}, &result); err != nil {
+	if err := c.Call(ctx, "share.nvmeof.create", rpcParams, &result); err != nil {
 		return nil, fmt.Errorf("failed to create NVMe-oF subsystem %q: %w", params.Name, err)
 	}
 
