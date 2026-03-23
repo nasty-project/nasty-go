@@ -42,11 +42,9 @@ type VolumeInfo struct {
 	VolumeID          string            `json:"volumeId"          yaml:"volumeId"`
 	Protocol          string            `json:"protocol"          yaml:"protocol"`
 	CapacityHuman     string            `json:"capacityHuman"     yaml:"capacityHuman"`
-	DeleteStrategy    string            `json:"deleteStrategy"    yaml:"deleteStrategy"`
-	Type              string            `json:"type"              yaml:"type"`
-	ContentSourceType string            `json:"contentSourceType" yaml:"contentSourceType"`
-	ContentSourceID   string            `json:"contentSourceId"   yaml:"contentSourceId"`
-	HealthStatus      string            `json:"healthStatus"      yaml:"healthStatus"`
+	DeleteStrategy string            `json:"deleteStrategy" yaml:"deleteStrategy"`
+	Type           string            `json:"type"           yaml:"type"`
+	HealthStatus   string            `json:"healthStatus"   yaml:"healthStatus"`
 	HealthIssue       string            `json:"healthIssue"       yaml:"healthIssue"`
 	ClusterID         string            `json:"clusterId"         yaml:"clusterId"`
 	K8s               *K8sVolumeBinding `json:"k8s,omitempty"     yaml:"k8s,omitempty"`
@@ -165,12 +163,7 @@ type VolumeDetails struct {
 	UsedHuman         string                  `json:"usedHuman"                   yaml:"usedHuman"`
 	CreatedAt         string                  `json:"createdAt"                   yaml:"createdAt"`
 	DeleteStrategy    string                  `json:"deleteStrategy"              yaml:"deleteStrategy"`
-	Adoptable         bool                    `json:"adoptable"                   yaml:"adoptable"`
-	ContentSourceType string                  `json:"contentSourceType,omitempty" yaml:"contentSourceType,omitempty"`
-	ContentSourceID   string                  `json:"contentSourceId,omitempty"   yaml:"contentSourceId,omitempty"`
-	CloneMode         string                  `json:"cloneMode,omitempty"         yaml:"cloneMode,omitempty"`
-	OriginSnapshot    string                  `json:"originSnapshot,omitempty"    yaml:"originSnapshot,omitempty"`
-	ZFSOrigin         string                  `json:"zfsOrigin,omitempty"         yaml:"zfsOrigin,omitempty"`
+	Adoptable bool `json:"adoptable" yaml:"adoptable"`
 	K8s               *K8sVolumeBinding       `json:"k8s,omitempty"               yaml:"k8s,omitempty"`
 	NFSShare          *NFSShareDetails        `json:"nfsShare,omitempty"          yaml:"nfsShare,omitempty"`
 	NVMeOFSubsystem   *NVMeOFSubsystemDetails `json:"nvmeofSubsystem,omitempty"   yaml:"nvmeofSubsystem,omitempty"`

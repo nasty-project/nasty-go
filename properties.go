@@ -74,39 +74,6 @@ const (
 	PropertyStorageClass = "nasty-csi:storage_class"
 )
 
-// NFS-specific properties.
-const (
-	// PropertyNFSShareID stores the NASty NFS share ID (mutable on re-share).
-	// Value: e.g., "42" (integer stored as string).
-	PropertyNFSShareID = "nasty-csi:nfs_share_id"
-
-	// PropertyNFSSharePath stores the NFS export path (stable identifier).
-	// Value: e.g., "/mnt/tank/csi/pvc-xxx".
-	PropertyNFSSharePath = "nasty-csi:nfs_share_path"
-)
-
-// NVMe-oF-specific properties.
-const (
-	// PropertyNVMeSubsystemID stores the NASty NVMe-oF subsystem ID (mutable).
-	// Value: e.g., "338" (integer stored as string).
-	PropertyNVMeSubsystemID = "nasty-csi:nvmeof_subsystem_id"
-
-	// PropertyNVMeSubsystemNQN stores the NVMe-oF subsystem NQN (stable identifier).
-	// Value: e.g., "nqn.2024.io.nasty:nvme:pvc-xxx".
-	PropertyNVMeSubsystemNQN = "nasty-csi:nvmeof_subsystem_nqn"
-)
-
-// iSCSI-specific properties (future).
-const (
-	// PropertyISCSIIQN stores the iSCSI target IQN (stable identifier).
-	// Value: e.g., "iqn.2024.io.nasty:target:pvc-xxx".
-	PropertyISCSIIQN = "nasty-csi:iscsi_iqn"
-
-	// PropertyISCSITargetID stores the NASty iSCSI target ID (mutable).
-	// Value: e.g., "10" (integer stored as string).
-	PropertyISCSITargetID = "nasty-csi:iscsi_target_id"
-)
-
 // Multi-cluster isolation properties.
 const (
 	// PropertyClusterID stores the cluster identifier for multi-cluster NASty sharing.
@@ -116,67 +83,11 @@ const (
 	PropertyClusterID = "nasty-csi:cluster_id"
 )
 
-// SMB-specific properties.
-const (
-	// PropertySMBShareID stores the NASty SMB share ID (mutable on re-share).
-	// Value: e.g., "42" (integer stored as string).
-	PropertySMBShareID = "nasty-csi:smb_share_id"
-
-	// PropertySMBShareName stores the SMB share name (stable identifier).
-	// Value: e.g., "pvc-xxx".
-	PropertySMBShareName = "nasty-csi:smb_share_name"
-)
-
 // Snapshot-specific properties.
 const (
-	// PropertySnapshotID stores the CSI snapshot ID for detached snapshots.
-	// Value: e.g., "snapshot-12345678-1234-1234-1234-123456789012".
-	PropertySnapshotID = "nasty-csi:snapshot_id"
-
 	// PropertySourceVolumeID stores the source volume ID for snapshots.
 	// Value: e.g., "pvc-12345678-1234-1234-1234-123456789012".
 	PropertySourceVolumeID = "nasty-csi:source_volume_id"
-
-	// PropertyDetachedSnapshot indicates this dataset is a detached snapshot.
-	// Value: "true" or "false".
-	PropertyDetachedSnapshot = "nasty-csi:detached_snapshot"
-
-	// PropertySourceDataset stores the source dataset path for detached snapshots.
-	// Value: e.g., "pool/datasets/pvc-xxx".
-	PropertySourceDataset = "nasty-csi:source_dataset"
-)
-
-// Clone/content source properties.
-const (
-	// PropertyContentSourceType stores the content source type for cloned volumes.
-	// Value: "snapshot" or "volume".
-	PropertyContentSourceType = "nasty-csi:content_source_type"
-
-	// PropertyContentSourceID stores the content source ID for cloned volumes.
-	// Value: The snapshot ID or volume ID used as source.
-	PropertyContentSourceID = "nasty-csi:content_source_id"
-
-	// PropertyCloneMode stores how the clone was created.
-	// Value: "cow" (default COW clone), "promoted" (clone+promote), or "detached" (send/receive).
-	// This affects deletion order and dependency relationships.
-	PropertyCloneMode = "nasty-csi:clone_mode"
-
-	// PropertyOriginSnapshot stores the ZFS origin snapshot for COW clones.
-	// Value: Full ZFS snapshot path, e.g., "pool/dataset@snapshot".
-	// Only set for COW clones (not promoted or detached).
-	PropertyOriginSnapshot = "nasty-csi:origin_snapshot"
-)
-
-// Clone mode values.
-const (
-	// CloneModeCOW indicates a standard COW clone (clone depends on snapshot).
-	CloneModeCOW = "cow"
-
-	// CloneModePromoted indicates a promoted clone (dependency reversed).
-	CloneModePromoted = "promoted"
-
-	// CloneModeDetached indicates a detached clone via send/receive (no dependency).
-	CloneModeDetached = "detached"
 )
 
 // Property values.
@@ -196,20 +107,11 @@ const (
 	// ProtocolSMB indicates SMB/CIFS protocol.
 	ProtocolSMB = "smb"
 
-	// ContentSourceSnapshot indicates the volume was created from a snapshot.
-	ContentSourceSnapshot = "snapshot"
-
-	// ContentSourceVolume indicates the volume was created from another volume (clone).
-	ContentSourceVolume = "volume"
-
 	// DeleteStrategyDelete is the default strategy - volume is deleted when PVC is deleted.
 	DeleteStrategyDelete = "delete"
 
 	// DeleteStrategyRetain means the volume is retained when PVC is deleted.
 	DeleteStrategyRetain = "retain"
-
-	// PropertyValueTrue is the string value "true" used in boolean ZFS properties.
-	PropertyValueTrue = "true"
 )
 
 // PropertyNames returns all nasty-csi property names for querying.
@@ -228,28 +130,8 @@ func PropertyNames() []string {
 		PropertyPVCName,
 		PropertyPVCNamespace,
 		PropertyStorageClass,
-		// NFS properties
-		PropertyNFSShareID,
-		PropertyNFSSharePath,
-		// NVMe-oF properties
-		PropertyNVMeSubsystemID,
-		PropertyNVMeSubsystemNQN,
-		// iSCSI properties
-		PropertyISCSIIQN,
-		PropertyISCSITargetID,
-		// SMB properties
-		PropertySMBShareID,
-		PropertySMBShareName,
 		// Snapshot properties
-		PropertySnapshotID,
 		PropertySourceVolumeID,
-		PropertyDetachedSnapshot,
-		PropertySourceDataset,
-		// Clone properties
-		PropertyContentSourceType,
-		PropertyContentSourceID,
-		PropertyCloneMode,
-		PropertyOriginSnapshot,
 		// Multi-cluster
 		PropertyClusterID,
 	}
@@ -260,8 +142,6 @@ type NFSVolumeParams struct {
 	VolumeID       string
 	CreatedAt      string
 	DeleteStrategy string
-	SharePath      string
-	ShareIDStr     string // NASty API UUID share ID
 	PVCName        string
 	PVCNamespace   string
 	StorageClass   string
@@ -282,8 +162,6 @@ func NFSVolumePropertiesV1(params NFSVolumeParams) map[string]string {
 		PropertyProtocol:       ProtocolNFS,
 		PropertyCreatedAt:      params.CreatedAt,
 		PropertyDeleteStrategy: params.DeleteStrategy,
-		PropertyNFSShareID:     params.ShareIDStr,
-		PropertyNFSSharePath:   params.SharePath,
 	}
 	// Add adoption properties if provided
 	if params.PVCName != "" {
@@ -296,7 +174,7 @@ func NFSVolumePropertiesV1(params NFSVolumeParams) map[string]string {
 		props[PropertyStorageClass] = params.StorageClass
 	}
 	if params.Adoptable {
-		props[PropertyAdoptable] = PropertyValueTrue
+		props[PropertyAdoptable] = "true"
 	}
 	if params.ClusterID != "" {
 		props[PropertyClusterID] = params.ClusterID
@@ -306,31 +184,27 @@ func NFSVolumePropertiesV1(params NFSVolumeParams) map[string]string {
 
 // NVMeOFVolumeParams contains parameters for creating NVMe-oF volume properties.
 type NVMeOFVolumeParams struct {
-	VolumeID        string
-	CreatedAt       string
-	DeleteStrategy  string
-	SubsystemNQN    string
-	SubsystemIDStr  string // NASty API UUID subsystem ID (preferred when non-empty)
-	PVCName         string
-	PVCNamespace    string
-	StorageClass    string
-	ClusterID       string
-	CapacityBytes   int64
-	Adoptable       bool // Mark volume as adoptable for cross-cluster adoption
+	VolumeID       string
+	CreatedAt      string
+	DeleteStrategy string
+	PVCName        string
+	PVCNamespace   string
+	StorageClass   string
+	ClusterID      string
+	CapacityBytes  int64
+	Adoptable      bool // Mark volume as adoptable for cross-cluster adoption
 }
 
 // NVMeOFVolumePropertiesV1 returns Schema v1 properties for an NVMe-oF volume.
 func NVMeOFVolumePropertiesV1(params NVMeOFVolumeParams) map[string]string {
 	props := map[string]string{
-		PropertySchemaVersion:    SchemaVersionV1,
-		PropertyManagedBy:        ManagedByValue,
-		PropertyCSIVolumeName:    params.VolumeID,
-		PropertyCapacityBytes:    int64ToString(params.CapacityBytes),
-		PropertyProtocol:         ProtocolNVMeOF,
-		PropertyCreatedAt:        params.CreatedAt,
-		PropertyDeleteStrategy:   params.DeleteStrategy,
-		PropertyNVMeSubsystemID:  params.SubsystemIDStr,
-		PropertyNVMeSubsystemNQN: params.SubsystemNQN,
+		PropertySchemaVersion:  SchemaVersionV1,
+		PropertyManagedBy:      ManagedByValue,
+		PropertyCSIVolumeName:  params.VolumeID,
+		PropertyCapacityBytes:  int64ToString(params.CapacityBytes),
+		PropertyProtocol:       ProtocolNVMeOF,
+		PropertyCreatedAt:      params.CreatedAt,
+		PropertyDeleteStrategy: params.DeleteStrategy,
 	}
 	// Add adoption properties if provided
 	if params.PVCName != "" {
@@ -343,7 +217,7 @@ func NVMeOFVolumePropertiesV1(params NVMeOFVolumeParams) map[string]string {
 		props[PropertyStorageClass] = params.StorageClass
 	}
 	if params.Adoptable {
-		props[PropertyAdoptable] = PropertyValueTrue
+		props[PropertyAdoptable] = "true"
 	}
 	if params.ClusterID != "" {
 		props[PropertyClusterID] = params.ClusterID
@@ -356,8 +230,6 @@ type ISCSIVolumeParams struct {
 	VolumeID       string
 	CreatedAt      string
 	DeleteStrategy string
-	TargetIQN      string
-	TargetIDStr    string // NASty API UUID target ID
 	PVCName        string
 	PVCNamespace   string
 	StorageClass   string
@@ -376,8 +248,6 @@ func ISCSIVolumePropertiesV1(params ISCSIVolumeParams) map[string]string {
 		PropertyProtocol:       ProtocolISCSI,
 		PropertyCreatedAt:      params.CreatedAt,
 		PropertyDeleteStrategy: params.DeleteStrategy,
-		PropertyISCSITargetID:  params.TargetIDStr,
-		PropertyISCSIIQN:       params.TargetIQN,
 	}
 	// Add adoption properties if provided
 	if params.PVCName != "" {
@@ -390,7 +260,7 @@ func ISCSIVolumePropertiesV1(params ISCSIVolumeParams) map[string]string {
 		props[PropertyStorageClass] = params.StorageClass
 	}
 	if params.Adoptable {
-		props[PropertyAdoptable] = PropertyValueTrue
+		props[PropertyAdoptable] = "true"
 	}
 	if params.ClusterID != "" {
 		props[PropertyClusterID] = params.ClusterID
@@ -403,8 +273,6 @@ type SMBVolumeParams struct {
 	VolumeID       string
 	CreatedAt      string
 	DeleteStrategy string
-	ShareName      string
-	ShareIDStr     string // NASty API UUID share ID (preferred when non-empty)
 	PVCName        string
 	PVCNamespace   string
 	StorageClass   string
@@ -425,8 +293,6 @@ func SMBVolumePropertiesV1(params SMBVolumeParams) map[string]string {
 		PropertyProtocol:       ProtocolSMB,
 		PropertyCreatedAt:      params.CreatedAt,
 		PropertyDeleteStrategy: params.DeleteStrategy,
-		PropertySMBShareID:     params.ShareIDStr,
-		PropertySMBShareName:   params.ShareName,
 	}
 	// Add adoption properties if provided
 	if params.PVCName != "" {
@@ -439,7 +305,7 @@ func SMBVolumePropertiesV1(params SMBVolumeParams) map[string]string {
 		props[PropertyStorageClass] = params.StorageClass
 	}
 	if params.Adoptable {
-		props[PropertyAdoptable] = PropertyValueTrue
+		props[PropertyAdoptable] = "true"
 	}
 	if params.ClusterID != "" {
 		props[PropertyClusterID] = params.ClusterID
@@ -449,31 +315,19 @@ func SMBVolumePropertiesV1(params SMBVolumeParams) map[string]string {
 
 // SnapshotParams contains parameters for creating snapshot properties.
 type SnapshotParams struct {
-	SnapshotID     string
 	SourceVolumeID string
 	Protocol       string
-	SourceDataset  string
 	ClusterID      string
-	Detached       bool
 }
 
 // SnapshotPropertiesV1 returns Schema v1 properties for a snapshot.
 func SnapshotPropertiesV1(params SnapshotParams) map[string]string {
-	detachedValue := "false"
-	if params.Detached {
-		detachedValue = "true"
-	}
 	props := map[string]string{
-		PropertySchemaVersion:    SchemaVersionV1,
-		PropertyManagedBy:        ManagedByValue,
-		PropertySnapshotID:       params.SnapshotID,
-		PropertySourceVolumeID:   params.SourceVolumeID,
-		PropertyProtocol:         params.Protocol,
-		PropertyDetachedSnapshot: detachedValue,
-		PropertyDeleteStrategy:   DeleteStrategyDelete,
-	}
-	if params.SourceDataset != "" {
-		props[PropertySourceDataset] = params.SourceDataset
+		PropertySchemaVersion:  SchemaVersionV1,
+		PropertyManagedBy:      ManagedByValue,
+		PropertySourceVolumeID: params.SourceVolumeID,
+		PropertyProtocol:       params.Protocol,
+		PropertyDeleteStrategy: DeleteStrategyDelete,
 	}
 	if params.ClusterID != "" {
 		props[PropertyClusterID] = params.ClusterID
@@ -481,31 +335,7 @@ func SnapshotPropertiesV1(params SnapshotParams) map[string]string {
 	return props
 }
 
-// ClonedVolumeProperties returns additional properties for cloned volumes.
-func ClonedVolumeProperties(sourceType, sourceID string) map[string]string {
-	return map[string]string{
-		PropertyContentSourceType: sourceType,
-		PropertyContentSourceID:   sourceID,
-	}
-}
-
-// ClonedVolumePropertiesV2 returns additional properties for cloned volumes with clone mode info.
-// cloneMode: "cow", "promoted", or "detached"
-// originSnapshot: The ZFS snapshot path the clone was created from (empty for detached clones).
-func ClonedVolumePropertiesV2(sourceType, sourceID, cloneMode, originSnapshot string) map[string]string {
-	props := map[string]string{
-		PropertyContentSourceType: sourceType,
-		PropertyContentSourceID:   sourceID,
-		PropertyCloneMode:         cloneMode,
-	}
-	// Only set origin for COW clones (promoted and detached break/have no dependency)
-	if originSnapshot != "" && cloneMode == CloneModeCOW {
-		props[PropertyOriginSnapshot] = originSnapshot
-	}
-	return props
-}
-
-// int64ToString converts an int64 to string for ZFS property storage.
+// int64ToString converts an int64 to string for xattr property storage.
 func int64ToString(i int64) string {
 	return strconv.FormatInt(i, 10)
 }

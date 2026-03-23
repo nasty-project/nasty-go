@@ -210,14 +210,6 @@ func GetVolumeDetails(ctx context.Context, client nastygo.ClientInterface, volum
 			details.DeleteStrategy = value
 		case nastygo.PropertyAdoptable:
 			details.Adoptable = value == valueTrue
-		case nastygo.PropertyContentSourceType:
-			details.ContentSourceType = value
-		case nastygo.PropertyContentSourceID:
-			details.ContentSourceID = value
-		case nastygo.PropertyCloneMode:
-			details.CloneMode = value
-		case nastygo.PropertyOriginSnapshot:
-			details.OriginSnapshot = value
 		}
 	}
 
@@ -244,10 +236,7 @@ func GetVolumeDetails(ctx context.Context, client nastygo.ClientInterface, volum
 }
 
 func getNFSShareDetails(ctx context.Context, client nastygo.ClientInterface, sv *nastygo.Subvolume) (*NFSShareDetails, error) {
-	sharePath := sv.Properties[nastygo.PropertyNFSSharePath]
-	if sharePath == "" {
-		sharePath = sv.Path
-	}
+	sharePath := sv.Path
 	if sharePath == "" {
 		return nil, errNoSharePath
 	}
@@ -274,11 +263,30 @@ func getNFSShareDetails(ctx context.Context, client nastygo.ClientInterface, sv 
 }
 
 func getNVMeOFSubsystemDetails(ctx context.Context, client nastygo.ClientInterface, sv *nastygo.Subvolume) (*NVMeOFSubsystemDetails, error) {
-	nqn := sv.Properties[nastygo.PropertyNVMeSubsystemNQN]
-	if nqn == "" {
+	// Derive NQN from volume name - subsystems are looked up by NQN pattern
+	volumeName := sv.Properties[nastygo.PropertyCSIVolumeName]
+	if volumeName == "" {
 		return nil, errNoSubsystemNQN
 	}
 
+	// Try all known NQN prefixes (scan subsystems by volume name suffix)
+	subsystems, listErr := client.ListNVMeOFSubsystems(ctx)
+	if listErr != nil {
+		return nil, listErr
+	}
+	suffix := ":" + volumeName
+	for i := range subsystems {
+		if strings.HasSuffix(subsystems[i].NQN, suffix) {
+			return &NVMeOFSubsystemDetails{
+				ID:      subsystems[i].ID,
+				NQN:     subsystems[i].NQN,
+				Enabled: subsystems[i].Enabled,
+			}, nil
+		}
+	}
+
+	// Fallback: try exact match with default prefix
+	nqn := "nqn.2026-02.io.nasty.csi:" + volumeName
 	subsystem, err := client.GetNVMeOFSubsystemByNQN(ctx, nqn)
 	if err != nil {
 		return nil, err
@@ -295,20 +303,7 @@ func getNVMeOFSubsystemDetails(ctx context.Context, client nastygo.ClientInterfa
 }
 
 func getSMBShareDetails(ctx context.Context, client nastygo.ClientInterface, sv *nastygo.Subvolume) (*SMBShareDetails, error) {
-	// Try by stored share ID first
-	if shareID := sv.Properties[nastygo.PropertySMBShareID]; shareID != "" {
-		share, shareErr := client.GetSMBShare(ctx, shareID)
-		if shareErr == nil {
-			return &SMBShareDetails{
-				ID:      share.ID,
-				Name:    share.Name,
-				Path:    share.Path,
-				Enabled: share.Enabled,
-			}, nil
-		}
-	}
-
-	// Fall back to searching by path
+	// Search by path
 	sharePath := sv.Path
 	if sharePath == "" {
 		return nil, errNoSharePath
@@ -332,11 +327,29 @@ func getSMBShareDetails(ctx context.Context, client nastygo.ClientInterface, sv 
 }
 
 func getISCSITargetDetails(ctx context.Context, client nastygo.ClientInterface, sv *nastygo.Subvolume) (*ISCSITargetDetails, error) {
-	iqn := sv.Properties[nastygo.PropertyISCSIIQN]
-	if iqn == "" {
+	// Derive IQN from volume name
+	volumeName := sv.Properties[nastygo.PropertyCSIVolumeName]
+	if volumeName == "" {
 		return nil, errNoISCSIIQN
 	}
 
+	// Scan targets by IQN pattern derived from volume name
+	targets, listErr := client.ListISCSITargets(ctx)
+	if listErr != nil {
+		return nil, listErr
+	}
+	suffix := ":" + volumeName
+	for i := range targets {
+		if strings.HasSuffix(targets[i].IQN, suffix) {
+			return &ISCSITargetDetails{
+				ID:  targets[i].ID,
+				IQN: targets[i].IQN,
+			}, nil
+		}
+	}
+
+	// Fallback: try exact match with default prefix
+	iqn := "iqn.2024-01.io.nasty.csi:" + volumeName
 	target, err := client.GetISCSITargetByIQN(ctx, iqn)
 	if err != nil {
 		return nil, err
@@ -355,10 +368,6 @@ func getISCSITargetDetails(ctx context.Context, client nastygo.ClientInterface, 
 func extractVolumes(subvols []nastygo.Subvolume) []VolumeInfo {
 	var volumes []VolumeInfo
 	for _, sv := range subvols {
-		if sv.Properties[nastygo.PropertyDetachedSnapshot] == valueTrue {
-			continue
-		}
-
 		volumeID := sv.Properties[nastygo.PropertyCSIVolumeName]
 		if volumeID == "" {
 			continue
@@ -378,8 +387,6 @@ func extractVolumes(subvols []nastygo.Subvolume) []VolumeInfo {
 		vol.DeleteStrategy = sv.Properties[nastygo.PropertyDeleteStrategy]
 		vol.Adoptable = sv.Properties[nastygo.PropertyAdoptable] == valueTrue
 		vol.ClusterID = sv.Properties[nastygo.PropertyClusterID]
-		vol.ContentSourceType = sv.Properties[nastygo.PropertyContentSourceType]
-		vol.ContentSourceID = sv.Properties[nastygo.PropertyContentSourceID]
 
 		volumes = append(volumes, vol)
 	}
@@ -387,46 +394,10 @@ func extractVolumes(subvols []nastygo.Subvolume) []VolumeInfo {
 }
 
 // extractClones extracts CloneInfo from pre-fetched managed subvolumes (no API calls).
-func extractClones(subvols []nastygo.Subvolume) []CloneInfo {
+// Clone metadata properties (content source, clone mode, origin snapshot) have been removed
+// as they were ZFS-specific. bcachefs clones are native COW snapshots with no dependency tracking.
+func extractClones(_ []nastygo.Subvolume) []CloneInfo {
 	var clones []CloneInfo
-	for _, sv := range subvols {
-		if sv.Properties[nastygo.PropertyDetachedSnapshot] == valueTrue {
-			continue
-		}
-
-		sourceType := sv.Properties[nastygo.PropertyContentSourceType]
-		if sourceType == "" {
-			continue
-		}
-
-		clone := CloneInfo{
-			Dataset:    sv.Pool + "/" + sv.Name,
-			SourceType: sourceType,
-		}
-
-		clone.VolumeID = sv.Properties[nastygo.PropertyCSIVolumeName]
-		clone.Protocol = sv.Properties[nastygo.PropertyProtocol]
-		clone.SourceID = sv.Properties[nastygo.PropertyContentSourceID]
-		clone.OriginSnapshot = sv.Properties[nastygo.PropertyOriginSnapshot]
-
-		clone.CloneMode = sv.Properties[nastygo.PropertyCloneMode]
-		if clone.CloneMode == "" {
-			clone.CloneMode = nastygo.CloneModeCOW
-		}
-
-		switch clone.CloneMode {
-		case nastygo.CloneModeCOW:
-			clone.DependencyNote = "Source snapshot CANNOT be deleted"
-		case nastygo.CloneModePromoted:
-			clone.DependencyNote = "Source snapshot CAN be deleted"
-		case nastygo.CloneModeDetached:
-			clone.DependencyNote = "Fully independent (no dependencies)"
-		default:
-			clone.DependencyNote = "Unknown mode"
-		}
-
-		clones = append(clones, clone)
-	}
 	return clones
 }
 

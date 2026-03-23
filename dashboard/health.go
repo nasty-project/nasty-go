@@ -73,10 +73,6 @@ func CheckVolumeHealth(ctx context.Context, client nastygo.ClientInterface) (*He
 	for i := range subvols {
 		sv := &subvols[i]
 
-		if sv.Properties[nastygo.PropertyDetachedSnapshot] == valueTrue {
-			continue
-		}
-
 		volumeID := sv.Properties[nastygo.PropertyCSIVolumeName]
 		if volumeID == "" {
 			continue
@@ -135,11 +131,7 @@ func CheckVolumeHealth(ctx context.Context, client nastygo.ClientInterface) (*He
 
 // CheckNFSHealth checks if the NFS share for a subvolume is healthy.
 func CheckNFSHealth(sv *nastygo.Subvolume, nfsShareMap map[string]*nastygo.NFSShare, health *VolumeHealth) {
-	sharePath := sv.Properties[nastygo.PropertyNFSSharePath]
-	if sharePath == "" {
-		sharePath = sv.Path
-	}
-
+	sharePath := sv.Path
 	if sharePath == "" {
 		health.Issues = append(health.Issues, "NFS share path not found in properties")
 		shareOK := false
@@ -164,19 +156,28 @@ func CheckNFSHealth(sv *nastygo.Subvolume, nfsShareMap map[string]*nastygo.NFSSh
 }
 
 // CheckNVMeOFHealth checks if the NVMe-oF subsystem for a subvolume is healthy.
+// Subsystem is found by scanning the NQN map for a suffix matching the volume name.
 func CheckNVMeOFHealth(sv *nastygo.Subvolume, nvmeSubsysMap map[string]*nastygo.NVMeOFSubsystem, health *VolumeHealth) {
-	nqn := sv.Properties[nastygo.PropertyNVMeSubsystemNQN]
-
-	if nqn == "" {
-		health.Issues = append(health.Issues, "NVMe-oF subsystem NQN not found in properties")
+	volumeName := sv.Properties[nastygo.PropertyCSIVolumeName]
+	if volumeName == "" {
+		health.Issues = append(health.Issues, "CSI volume name not found in properties")
 		subsysOK := false
 		health.SubsysOK = &subsysOK
 		return
 	}
 
-	_, exists := nvmeSubsysMap[nqn]
-	if !exists {
-		health.Issues = append(health.Issues, "NVMe-oF subsystem not found: "+nqn)
+	// Scan subsystems by NQN suffix matching volume name
+	suffix := ":" + volumeName
+	found := false
+	for nqn := range nvmeSubsysMap {
+		if strings.HasSuffix(nqn, suffix) {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		health.Issues = append(health.Issues, "NVMe-oF subsystem not found for volume "+volumeName)
 		subsysOK := false
 		health.SubsysOK = &subsysOK
 		return
@@ -214,19 +215,28 @@ func CheckSMBHealth(sv *nastygo.Subvolume, smbShareMap map[string]*nastygo.SMBSh
 }
 
 // CheckISCSIHealth checks if the iSCSI target for a subvolume is healthy.
+// Target is found by scanning the IQN map for a suffix matching the volume name.
 func CheckISCSIHealth(sv *nastygo.Subvolume, iscsiTargetMap map[string]*nastygo.ISCSITarget, health *VolumeHealth) {
-	iqn := sv.Properties[nastygo.PropertyISCSIIQN]
-
-	if iqn == "" {
-		health.Issues = append(health.Issues, "iSCSI IQN not found in properties")
+	volumeName := sv.Properties[nastygo.PropertyCSIVolumeName]
+	if volumeName == "" {
+		health.Issues = append(health.Issues, "CSI volume name not found in properties")
 		targetOK := false
 		health.TargetOK = &targetOK
 		return
 	}
 
-	_, exists := iscsiTargetMap[iqn]
-	if !exists {
-		health.Issues = append(health.Issues, "iSCSI target not found: "+iqn)
+	// Scan targets by IQN suffix matching volume name
+	suffix := ":" + volumeName
+	found := false
+	for iqn := range iscsiTargetMap {
+		if strings.HasSuffix(iqn, suffix) {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		health.Issues = append(health.Issues, "iSCSI target not found for volume "+volumeName)
 		targetOK := false
 		health.TargetOK = &targetOK
 		return
@@ -271,9 +281,6 @@ func AnnotateHealthFromMaps(volumes []VolumeInfo, managedSubvols []nastygo.Subvo
 	subvolMap := make(map[string]*nastygo.Subvolume, len(managedSubvols))
 	for i := range managedSubvols {
 		sv := &managedSubvols[i]
-		if sv.Properties[nastygo.PropertyDetachedSnapshot] == valueTrue {
-			continue
-		}
 		volumeID := sv.Properties[nastygo.PropertyCSIVolumeName]
 		if volumeID != "" {
 			subvolMap[volumeID] = sv
