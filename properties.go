@@ -83,13 +83,6 @@ const (
 	PropertyClusterID = "nasty-csi:cluster_id"
 )
 
-// Snapshot-specific properties.
-const (
-	// PropertySourceVolumeID stores the source volume ID for snapshots.
-	// Value: e.g., "pvc-12345678-1234-1234-1234-123456789012".
-	PropertySourceVolumeID = "nasty-csi:source_volume_id"
-)
-
 // Property values.
 const (
 	// ManagedByValue is the value stored in PropertyManagedBy.
@@ -130,8 +123,6 @@ func PropertyNames() []string {
 		PropertyPVCName,
 		PropertyPVCNamespace,
 		PropertyStorageClass,
-		// Snapshot properties
-		PropertySourceVolumeID,
 		// Multi-cluster
 		PropertyClusterID,
 	}
@@ -315,9 +306,8 @@ func SMBVolumePropertiesV1(params SMBVolumeParams) map[string]string {
 
 // SnapshotParams contains parameters for creating snapshot properties.
 type SnapshotParams struct {
-	SourceVolumeID string
-	Protocol       string
-	ClusterID      string
+	Protocol  string
+	ClusterID string
 }
 
 // SnapshotPropertiesV1 returns Schema v1 properties for a snapshot.
@@ -325,7 +315,6 @@ func SnapshotPropertiesV1(params SnapshotParams) map[string]string {
 	props := map[string]string{
 		PropertySchemaVersion:  SchemaVersionV1,
 		PropertyManagedBy:      ManagedByValue,
-		PropertySourceVolumeID: params.SourceVolumeID,
 		PropertyProtocol:       params.Protocol,
 		PropertyDeleteStrategy: DeleteStrategyDelete,
 	}
