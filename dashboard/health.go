@@ -80,7 +80,7 @@ func CheckVolumeHealth(ctx context.Context, client nastygo.ClientInterface) (*He
 
 		health := VolumeHealth{
 			VolumeID:  volumeID,
-			Dataset:   sv.Pool + "/" + sv.Name,
+			Dataset:   sv.Filesystem + "/" + sv.Name,
 			DatasetOK: true,
 			Status:    HealthStatusHealthy,
 			Issues:    make([]string, 0),
@@ -295,7 +295,7 @@ func AnnotateHealthFromMaps(volumes []VolumeInfo, managedSubvols []nastygo.Subvo
 
 		health := VolumeHealth{
 			VolumeID:  volumes[i].VolumeID,
-			Dataset:   sv.Pool + "/" + sv.Name,
+			Dataset:   sv.Filesystem + "/" + sv.Name,
 			DatasetOK: true,
 			Status:    HealthStatusHealthy,
 			Issues:    make([]string, 0),

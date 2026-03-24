@@ -55,7 +55,7 @@ func FindManagedSnapshots(ctx context.Context, client nastygo.ClientInterface, c
 		volumeID := sv.Properties[nastygo.PropertyCSIVolumeName]
 		protocol := sv.Properties[nastygo.PropertyProtocol]
 		if volumeID != "" {
-			key := sv.Pool + "/" + sv.Name
+			key := sv.Filesystem + "/" + sv.Name
 			managedSubvols[key] = struct {
 				volumeID string
 				protocol string
@@ -65,7 +65,7 @@ func FindManagedSnapshots(ctx context.Context, client nastygo.ClientInterface, c
 
 	var snapshots []SnapshotInfo
 	for _, snap := range snaps {
-		subvolKey := snap.Pool + "/" + snap.Subvolume
+		subvolKey := snap.Filesystem + "/" + snap.Subvolume
 		meta, ok := managedSubvols[subvolKey]
 		if !ok {
 			continue
@@ -108,7 +108,7 @@ func FindUnmanagedVolumes(ctx context.Context, client nastygo.ClientInterface, s
 
 	managedIDs := make(map[string]bool)
 	for i := range managedSubvols {
-		managedIDs[managedSubvols[i].Pool+"/"+managedSubvols[i].Name] = true
+		managedIDs[managedSubvols[i].Filesystem+"/"+managedSubvols[i].Name] = true
 	}
 
 	nfsShares, err := client.ListNFSShares(ctx)
@@ -123,7 +123,7 @@ func FindUnmanagedVolumes(ctx context.Context, client nastygo.ClientInterface, s
 	var volumes []UnmanagedVolume
 	for i := range allSubvols {
 		sv := &allSubvols[i]
-		svID := sv.Pool + "/" + sv.Name
+		svID := sv.Filesystem + "/" + sv.Name
 
 		if managedIDs[svID] {
 			continue
@@ -169,7 +169,7 @@ func GetVolumeDetails(ctx context.Context, client nastygo.ClientInterface, volum
 			return nil, fmt.Errorf("failed to query subvolumes: %w", findErr)
 		}
 		for i := range subvols {
-			if subvols[i].Pool+"/"+subvols[i].Name == volumeRef {
+			if subvols[i].Filesystem+"/"+subvols[i].Name == volumeRef {
 				subvol = &subvols[i]
 				break
 			}
@@ -180,7 +180,7 @@ func GetVolumeDetails(ctx context.Context, client nastygo.ClientInterface, volum
 		return nil, fmt.Errorf("%w: %s", errVolumeNotFound, volumeRef)
 	}
 
-	svID := subvol.Pool + "/" + subvol.Name
+	svID := subvol.Filesystem + "/" + subvol.Name
 	details := &VolumeDetails{
 		Dataset:    svID,
 		Type:       subvol.SubvolumeType,
@@ -374,7 +374,7 @@ func extractVolumes(subvols []nastygo.Subvolume) []VolumeInfo {
 		}
 
 		vol := VolumeInfo{
-			Dataset:  sv.Pool + "/" + sv.Name,
+			Dataset:  sv.Filesystem + "/" + sv.Name,
 			VolumeID: volumeID,
 			Type:     sv.SubvolumeType,
 		}

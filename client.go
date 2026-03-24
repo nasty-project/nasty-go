@@ -26,8 +26,8 @@ var (
 	ErrConnectionClosed       = errors.New("connection closed while waiting for response")
 	// ErrDatasetNotFound is kept for compatibility with FindSubvolumeByCSIVolumeName.
 	ErrDatasetNotFound = errors.New("dataset not found")
-	// ErrPoolNotFound is returned when a requested pool is not found.
-	ErrPoolNotFound = errors.New("pool not found")
+	// ErrFilesystemNotFound is returned when a requested filesystem is not found.
+	ErrFilesystemNotFound = errors.New("filesystem not found")
 	// ErrNFSShareDeletionFailed is kept for NFS share deletion error reporting.
 	ErrNFSShareDeletionFailed = errors.New("NFS share deletion returned false (unsuccessful)")
 )
@@ -686,157 +686,157 @@ func (c *Client) Close() {
 //
 // All methods implement ClientInterface using the NASty JSON-RPC 2.0 API.
 
-// QueryPool retrieves information about a specific pool.
-func (c *Client) QueryPool(ctx context.Context, poolName string) (*Pool, error) {
-	klog.V(4).Infof("Querying pool: %s", poolName)
+// QueryFilesystem retrieves information about a specific filesystem.
+func (c *Client) QueryFilesystem(ctx context.Context, fsName string) (*Filesystem, error) {
+	klog.V(4).Infof("Querying filesystem: %s", fsName)
 
-	var result Pool
-	if err := c.Call(ctx, "pool.get", map[string]interface{}{"name": poolName}, &result); err != nil {
-		return nil, fmt.Errorf("failed to query pool %s: %w", poolName, err)
+	var result Filesystem
+	if err := c.Call(ctx, "fs.get", map[string]interface{}{"name": fsName}, &result); err != nil {
+		return nil, fmt.Errorf("failed to query filesystem %s: %w", fsName, err)
 	}
 
-	klog.V(4).Infof("Queried pool %s: total=%d used=%d available=%d",
+	klog.V(4).Infof("Queried filesystem %s: total=%d used=%d available=%d",
 		result.Name, result.TotalBytes, result.UsedBytes, result.AvailableBytes)
 	return &result, nil
 }
 
 // CreateSubvolume creates a new subvolume (filesystem or block device).
 func (c *Client) CreateSubvolume(ctx context.Context, params SubvolumeCreateParams) (*Subvolume, error) {
-	klog.V(4).Infof("Creating subvolume %s/%s (type=%s)", params.Pool, params.Name, params.SubvolumeType)
+	klog.V(4).Infof("Creating subvolume %s/%s (type=%s)", params.Filesystem, params.Name, params.SubvolumeType)
 
 	var result Subvolume
 	if err := c.Call(ctx, "subvolume.create", map[string]interface{}{
-			"pool":           params.Pool,
+			"filesystem":     params.Filesystem,
 			"name":           params.Name,
 			"subvolume_type": params.SubvolumeType,
 			"volsize_bytes":  params.VolsizeBytes,
 			"compression":    params.Compression,
 			"comments":       params.Comments,
 		}, &result); err != nil {
-		return nil, fmt.Errorf("failed to create subvolume %s/%s: %w", params.Pool, params.Name, err)
+		return nil, fmt.Errorf("failed to create subvolume %s/%s: %w", params.Filesystem, params.Name, err)
 	}
 
-	klog.V(4).Infof("Created subvolume %s/%s at %s", params.Pool, params.Name, result.Path)
+	klog.V(4).Infof("Created subvolume %s/%s at %s", params.Filesystem, params.Name, result.Path)
 	return &result, nil
 }
 
 // DeleteSubvolume deletes a subvolume.
-func (c *Client) DeleteSubvolume(ctx context.Context, pool, name string) error {
-	klog.V(4).Infof("Deleting subvolume %s/%s", pool, name)
+func (c *Client) DeleteSubvolume(ctx context.Context, filesystem, name string) error {
+	klog.V(4).Infof("Deleting subvolume %s/%s", filesystem, name)
 
-	if err := c.Call(ctx, "subvolume.delete", map[string]interface{}{"pool": pool, "name": name}, nil); err != nil {
-		return fmt.Errorf("failed to delete subvolume %s/%s: %w", pool, name, err)
+	if err := c.Call(ctx, "subvolume.delete", map[string]interface{}{"filesystem": filesystem, "name": name}, nil); err != nil {
+		return fmt.Errorf("failed to delete subvolume %s/%s: %w", filesystem, name, err)
 	}
 
-	klog.V(4).Infof("Deleted subvolume %s/%s", pool, name)
+	klog.V(4).Infof("Deleted subvolume %s/%s", filesystem, name)
 	return nil
 }
 
-// GetSubvolume retrieves a subvolume by pool and name.
-func (c *Client) GetSubvolume(ctx context.Context, pool, name string) (*Subvolume, error) {
-	klog.V(4).Infof("Getting subvolume %s/%s", pool, name)
+// GetSubvolume retrieves a subvolume by filesystem and name.
+func (c *Client) GetSubvolume(ctx context.Context, filesystem, name string) (*Subvolume, error) {
+	klog.V(4).Infof("Getting subvolume %s/%s", filesystem, name)
 
 	var result Subvolume
-	if err := c.Call(ctx, "subvolume.get", map[string]interface{}{"pool": pool, "name": name}, &result); err != nil {
-		return nil, fmt.Errorf("failed to get subvolume %s/%s: %w", pool, name, err)
+	if err := c.Call(ctx, "subvolume.get", map[string]interface{}{"filesystem": filesystem, "name": name}, &result); err != nil {
+		return nil, fmt.Errorf("failed to get subvolume %s/%s: %w", filesystem, name, err)
 	}
 
 	return &result, nil
 }
 
-// ListAllSubvolumes lists all subvolumes in a pool.
-func (c *Client) ListAllSubvolumes(ctx context.Context, pool string) ([]Subvolume, error) {
-	klog.V(4).Infof("Listing subvolumes in pool %s", pool)
+// ListAllSubvolumes lists all subvolumes in a filesystem.
+func (c *Client) ListAllSubvolumes(ctx context.Context, filesystem string) ([]Subvolume, error) {
+	klog.V(4).Infof("Listing subvolumes in filesystem %s", filesystem)
 
 	var result []Subvolume
-	if err := c.Call(ctx, "subvolume.list_all", map[string]interface{}{"pool": pool}, &result); err != nil {
-		return nil, fmt.Errorf("failed to list subvolumes in pool %s: %w", pool, err)
+	if err := c.Call(ctx, "subvolume.list_all", map[string]interface{}{"filesystem": filesystem}, &result); err != nil {
+		return nil, fmt.Errorf("failed to list subvolumes in filesystem %s: %w", filesystem, err)
 	}
 
-	klog.V(4).Infof("Found %d subvolumes in pool %s", len(result), pool)
+	klog.V(4).Infof("Found %d subvolumes in filesystem %s", len(result), filesystem)
 	return result, nil
 }
 
 // ResizeSubvolume changes the size of a subvolume (sparse image for block, quota for filesystem).
-func (c *Client) ResizeSubvolume(ctx context.Context, pool, name string, volsizeBytes uint64) (*Subvolume, error) {
-	klog.V(4).Infof("Resizing subvolume %s/%s to %d bytes", pool, name, volsizeBytes)
+func (c *Client) ResizeSubvolume(ctx context.Context, filesystem, name string, volsizeBytes uint64) (*Subvolume, error) {
+	klog.V(4).Infof("Resizing subvolume %s/%s to %d bytes", filesystem, name, volsizeBytes)
 
 	var result Subvolume
 	if err := c.Call(ctx, "subvolume.resize", map[string]interface{}{
-			"pool":          pool,
+			"filesystem":    filesystem,
 			"name":          name,
 			"volsize_bytes": volsizeBytes,
 		}, &result); err != nil {
-		return nil, fmt.Errorf("failed to resize subvolume %s/%s: %w", pool, name, err)
+		return nil, fmt.Errorf("failed to resize subvolume %s/%s: %w", filesystem, name, err)
 	}
 
-	klog.V(4).Infof("Resized subvolume %s/%s to %d bytes", pool, name, volsizeBytes)
+	klog.V(4).Infof("Resized subvolume %s/%s to %d bytes", filesystem, name, volsizeBytes)
 	return &result, nil
 }
 
 // CloneSubvolume creates a writable COW clone of a subvolume.
 // This is bcachefs's native O(1) clone — a writable snapshot that shares data
 // blocks with the source via copy-on-write.
-func (c *Client) CloneSubvolume(ctx context.Context, pool, name, newName string) (*Subvolume, error) {
-	klog.V(4).Infof("Cloning subvolume %s/%s to %s", pool, name, newName)
+func (c *Client) CloneSubvolume(ctx context.Context, filesystem, name, newName string) (*Subvolume, error) {
+	klog.V(4).Infof("Cloning subvolume %s/%s to %s", filesystem, name, newName)
 
 	var result Subvolume
 	if err := c.Call(ctx, "subvolume.clone", map[string]interface{}{
-			"pool":     pool,
-			"name":     name,
-			"new_name": newName,
+			"filesystem": filesystem,
+			"name":       name,
+			"new_name":   newName,
 		}, &result); err != nil {
-		return nil, fmt.Errorf("failed to clone subvolume %s/%s: %w", pool, name, err)
+		return nil, fmt.Errorf("failed to clone subvolume %s/%s: %w", filesystem, name, err)
 	}
 
-	klog.V(4).Infof("Cloned subvolume %s/%s to %s/%s", pool, name, pool, newName)
+	klog.V(4).Infof("Cloned subvolume %s/%s to %s/%s", filesystem, name, filesystem, newName)
 	return &result, nil
 }
 
 // SetSubvolumeProperties sets xattr properties on a subvolume.
-func (c *Client) SetSubvolumeProperties(ctx context.Context, pool, name string, props map[string]string) (*Subvolume, error) {
-	klog.V(4).Infof("Setting %d properties on subvolume %s/%s", len(props), pool, name)
+func (c *Client) SetSubvolumeProperties(ctx context.Context, filesystem, name string, props map[string]string) (*Subvolume, error) {
+	klog.V(4).Infof("Setting %d properties on subvolume %s/%s", len(props), filesystem, name)
 
 	var result Subvolume
 	if err := c.Call(ctx, "subvolume.set_properties", map[string]interface{}{
-			"pool":       pool,
+			"filesystem": filesystem,
 			"name":       name,
 			"properties": props,
 		}, &result); err != nil {
-		return nil, fmt.Errorf("failed to set properties on subvolume %s/%s: %w", pool, name, err)
+		return nil, fmt.Errorf("failed to set properties on subvolume %s/%s: %w", filesystem, name, err)
 	}
 
-	klog.V(4).Infof("Set properties on subvolume %s/%s", pool, name)
+	klog.V(4).Infof("Set properties on subvolume %s/%s", filesystem, name)
 	return &result, nil
 }
 
 // RemoveSubvolumeProperties removes xattr properties from a subvolume.
-func (c *Client) RemoveSubvolumeProperties(ctx context.Context, pool, name string, keys []string) (*Subvolume, error) {
-	klog.V(4).Infof("Removing %d properties from subvolume %s/%s", len(keys), pool, name)
+func (c *Client) RemoveSubvolumeProperties(ctx context.Context, filesystem, name string, keys []string) (*Subvolume, error) {
+	klog.V(4).Infof("Removing %d properties from subvolume %s/%s", len(keys), filesystem, name)
 
 	var result Subvolume
 	if err := c.Call(ctx, "subvolume.remove_properties", map[string]interface{}{
-			"pool": pool,
-			"name": name,
-			"keys": keys,
+			"filesystem": filesystem,
+			"name":       name,
+			"keys":       keys,
 		}, &result); err != nil {
-		return nil, fmt.Errorf("failed to remove properties from subvolume %s/%s: %w", pool, name, err)
+		return nil, fmt.Errorf("failed to remove properties from subvolume %s/%s: %w", filesystem, name, err)
 	}
 
 	return &result, nil
 }
 
 // FindSubvolumesByProperty finds subvolumes by an xattr property key/value pair.
-func (c *Client) FindSubvolumesByProperty(ctx context.Context, key, value, pool string) ([]Subvolume, error) {
-	klog.V(4).Infof("Finding subvolumes with %s=%s in pool %s", key, value, pool)
+func (c *Client) FindSubvolumesByProperty(ctx context.Context, key, value, filesystem string) ([]Subvolume, error) {
+	klog.V(4).Infof("Finding subvolumes with %s=%s in filesystem %s", key, value, filesystem)
 
 	var result []Subvolume
 	params := map[string]interface{}{
 		"key":   key,
 		"value": value,
 	}
-	if pool != "" {
-		params["pool"] = pool
+	if filesystem != "" {
+		params["filesystem"] = filesystem
 	}
 	if err := c.Call(ctx, "subvolume.find_by_property", params, &result); err != nil {
 		return nil, fmt.Errorf("failed to find subvolumes by property %s=%s: %w", key, value, err)
@@ -847,16 +847,16 @@ func (c *Client) FindSubvolumesByProperty(ctx context.Context, key, value, pool 
 }
 
 // FindManagedSubvolumes finds all subvolumes managed by nasty-csi.
-func (c *Client) FindManagedSubvolumes(ctx context.Context, pool string) ([]Subvolume, error) {
-	return c.FindSubvolumesByProperty(ctx, PropertyManagedBy, ManagedByValue, pool)
+func (c *Client) FindManagedSubvolumes(ctx context.Context, filesystem string) ([]Subvolume, error) {
+	return c.FindSubvolumesByProperty(ctx, PropertyManagedBy, ManagedByValue, filesystem)
 }
 
 // FindSubvolumeByCSIVolumeName finds a subvolume by its CSI volume name xattr.
 // Returns ErrDatasetNotFound if no matching subvolume is found.
-func (c *Client) FindSubvolumeByCSIVolumeName(ctx context.Context, pool, volumeName string) (*Subvolume, error) {
-	klog.V(4).Infof("Finding subvolume by CSI volume name %s in pool %s", volumeName, pool)
+func (c *Client) FindSubvolumeByCSIVolumeName(ctx context.Context, filesystem, volumeName string) (*Subvolume, error) {
+	klog.V(4).Infof("Finding subvolume by CSI volume name %s in filesystem %s", volumeName, filesystem)
 
-	subvolumes, err := c.FindSubvolumesByProperty(ctx, PropertyCSIVolumeName, volumeName, pool)
+	subvolumes, err := c.FindSubvolumesByProperty(ctx, PropertyCSIVolumeName, volumeName, filesystem)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find subvolume by CSI volume name %s: %w", volumeName, err)
 	}
@@ -870,72 +870,72 @@ func (c *Client) FindSubvolumeByCSIVolumeName(ctx context.Context, pool, volumeN
 		klog.Warningf("Found %d subvolumes with CSI volume name %s, using first", len(subvolumes), volumeName)
 	}
 
-	klog.V(4).Infof("Found subvolume %s/%s for CSI volume name %s", subvolumes[0].Pool, subvolumes[0].Name, volumeName)
+	klog.V(4).Infof("Found subvolume %s/%s for CSI volume name %s", subvolumes[0].Filesystem, subvolumes[0].Name, volumeName)
 	return &subvolumes[0], nil
 }
 
 // CreateSnapshot creates a new snapshot of a subvolume.
 func (c *Client) CreateSnapshot(ctx context.Context, params SnapshotCreateParams) (*Snapshot, error) {
-	klog.V(4).Infof("Creating snapshot %s on subvolume %s/%s", params.Name, params.Pool, params.Subvolume)
+	klog.V(4).Infof("Creating snapshot %s on subvolume %s/%s", params.Name, params.Filesystem, params.Subvolume)
 
 	var result Snapshot
 	if err := c.Call(ctx, "snapshot.create", map[string]interface{}{
-			"pool":      params.Pool,
-			"subvolume": params.Subvolume,
-			"name":      params.Name,
-			"read_only": params.ReadOnly,
+			"filesystem": params.Filesystem,
+			"subvolume":  params.Subvolume,
+			"name":       params.Name,
+			"read_only":  params.ReadOnly,
 		}, &result); err != nil {
-		return nil, fmt.Errorf("failed to create snapshot %s/%s@%s: %w", params.Pool, params.Subvolume, params.Name, err)
+		return nil, fmt.Errorf("failed to create snapshot %s/%s@%s: %w", params.Filesystem, params.Subvolume, params.Name, err)
 	}
 
-	klog.V(4).Infof("Created snapshot %s/%s@%s", params.Pool, params.Subvolume, params.Name)
+	klog.V(4).Infof("Created snapshot %s/%s@%s", params.Filesystem, params.Subvolume, params.Name)
 	return &result, nil
 }
 
 // DeleteSnapshot deletes a snapshot.
-func (c *Client) DeleteSnapshot(ctx context.Context, pool, subvolume, name string) error {
-	klog.V(4).Infof("Deleting snapshot %s/%s@%s", pool, subvolume, name)
+func (c *Client) DeleteSnapshot(ctx context.Context, filesystem, subvolume, name string) error {
+	klog.V(4).Infof("Deleting snapshot %s/%s@%s", filesystem, subvolume, name)
 
 	if err := c.Call(ctx, "snapshot.delete", map[string]interface{}{
-			"pool":      pool,
-			"subvolume": subvolume,
-			"name":      name,
+			"filesystem": filesystem,
+			"subvolume":  subvolume,
+			"name":       name,
 		}, nil); err != nil {
-		return fmt.Errorf("failed to delete snapshot %s/%s@%s: %w", pool, subvolume, name, err)
+		return fmt.Errorf("failed to delete snapshot %s/%s@%s: %w", filesystem, subvolume, name, err)
 	}
 
-	klog.V(4).Infof("Deleted snapshot %s/%s@%s", pool, subvolume, name)
+	klog.V(4).Infof("Deleted snapshot %s/%s@%s", filesystem, subvolume, name)
 	return nil
 }
 
-// ListSnapshots lists all snapshots in a pool.
-func (c *Client) ListSnapshots(ctx context.Context, pool string) ([]Snapshot, error) {
-	klog.V(4).Infof("Listing snapshots in pool %s", pool)
+// ListSnapshots lists all snapshots in a filesystem.
+func (c *Client) ListSnapshots(ctx context.Context, filesystem string) ([]Snapshot, error) {
+	klog.V(4).Infof("Listing snapshots in filesystem %s", filesystem)
 
 	var result []Snapshot
-	if err := c.Call(ctx, "snapshot.list", map[string]interface{}{"pool": pool}, &result); err != nil {
-		return nil, fmt.Errorf("failed to list snapshots in pool %s: %w", pool, err)
+	if err := c.Call(ctx, "snapshot.list", map[string]interface{}{"filesystem": filesystem}, &result); err != nil {
+		return nil, fmt.Errorf("failed to list snapshots in filesystem %s: %w", filesystem, err)
 	}
 
-	klog.V(4).Infof("Found %d snapshots in pool %s", len(result), pool)
+	klog.V(4).Infof("Found %d snapshots in filesystem %s", len(result), filesystem)
 	return result, nil
 }
 
 // CloneSnapshot creates a new writable subvolume from a snapshot.
 func (c *Client) CloneSnapshot(ctx context.Context, params SnapshotCloneParams) (*Subvolume, error) {
-	klog.V(4).Infof("Cloning snapshot %s/%s@%s to %s", params.Pool, params.Subvolume, params.Snapshot, params.NewName)
+	klog.V(4).Infof("Cloning snapshot %s/%s@%s to %s", params.Filesystem, params.Subvolume, params.Snapshot, params.NewName)
 
 	var result Subvolume
 	if err := c.Call(ctx, "snapshot.clone", map[string]interface{}{
-			"pool":      params.Pool,
-			"subvolume": params.Subvolume,
-			"snapshot":  params.Snapshot,
-			"new_name":  params.NewName,
+			"filesystem": params.Filesystem,
+			"subvolume":  params.Subvolume,
+			"snapshot":   params.Snapshot,
+			"new_name":   params.NewName,
 		}, &result); err != nil {
-		return nil, fmt.Errorf("failed to clone snapshot %s/%s@%s: %w", params.Pool, params.Subvolume, params.Snapshot, err)
+		return nil, fmt.Errorf("failed to clone snapshot %s/%s@%s: %w", params.Filesystem, params.Subvolume, params.Snapshot, err)
 	}
 
-	klog.V(4).Infof("Cloned snapshot to subvolume %s/%s", params.Pool, params.NewName)
+	klog.V(4).Infof("Cloned snapshot to subvolume %s/%s", params.Filesystem, params.NewName)
 	return &result, nil
 }
 

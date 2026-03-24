@@ -10,28 +10,28 @@ import (
 //
 //nolint:interfacebloat // NASty API client naturally has many methods covering different resource types
 type ClientInterface interface {
-	// Pool
-	QueryPool(ctx context.Context, poolName string) (*Pool, error)
+	// Filesystem
+	QueryFilesystem(ctx context.Context, fsName string) (*Filesystem, error)
 
 	// Subvolumes
 	CreateSubvolume(ctx context.Context, params SubvolumeCreateParams) (*Subvolume, error)
-	DeleteSubvolume(ctx context.Context, pool, name string) error
-	GetSubvolume(ctx context.Context, pool, name string) (*Subvolume, error)
-	ListAllSubvolumes(ctx context.Context, pool string) ([]Subvolume, error)
-	ResizeSubvolume(ctx context.Context, pool, name string, volsizeBytes uint64) (*Subvolume, error)
-	CloneSubvolume(ctx context.Context, pool, name, newName string) (*Subvolume, error)
+	DeleteSubvolume(ctx context.Context, filesystem, name string) error
+	GetSubvolume(ctx context.Context, filesystem, name string) (*Subvolume, error)
+	ListAllSubvolumes(ctx context.Context, filesystem string) ([]Subvolume, error)
+	ResizeSubvolume(ctx context.Context, filesystem, name string, volsizeBytes uint64) (*Subvolume, error)
+	CloneSubvolume(ctx context.Context, filesystem, name, newName string) (*Subvolume, error)
 
 	// Properties (xattrs)
-	SetSubvolumeProperties(ctx context.Context, pool, name string, props map[string]string) (*Subvolume, error)
-	RemoveSubvolumeProperties(ctx context.Context, pool, name string, keys []string) (*Subvolume, error)
-	FindSubvolumesByProperty(ctx context.Context, key, value, pool string) ([]Subvolume, error)
-	FindManagedSubvolumes(ctx context.Context, pool string) ([]Subvolume, error)
-	FindSubvolumeByCSIVolumeName(ctx context.Context, pool, volumeName string) (*Subvolume, error)
+	SetSubvolumeProperties(ctx context.Context, filesystem, name string, props map[string]string) (*Subvolume, error)
+	RemoveSubvolumeProperties(ctx context.Context, filesystem, name string, keys []string) (*Subvolume, error)
+	FindSubvolumesByProperty(ctx context.Context, key, value, filesystem string) ([]Subvolume, error)
+	FindManagedSubvolumes(ctx context.Context, filesystem string) ([]Subvolume, error)
+	FindSubvolumeByCSIVolumeName(ctx context.Context, filesystem, volumeName string) (*Subvolume, error)
 
 	// Snapshots
 	CreateSnapshot(ctx context.Context, params SnapshotCreateParams) (*Snapshot, error)
-	DeleteSnapshot(ctx context.Context, pool, subvolume, name string) error
-	ListSnapshots(ctx context.Context, pool string) ([]Snapshot, error)
+	DeleteSnapshot(ctx context.Context, filesystem, subvolume, name string) error
+	ListSnapshots(ctx context.Context, filesystem string) ([]Snapshot, error)
 	CloneSnapshot(ctx context.Context, params SnapshotCloneParams) (*Subvolume, error)
 
 	// NFS
@@ -64,8 +64,8 @@ type ClientInterface interface {
 	Close()
 }
 
-// Pool represents a NASty storage pool.
-type Pool struct {
+// Filesystem represents a NASty storage filesystem.
+type Filesystem struct {
 	Name           string  `json:"name"`
 	Mounted        bool    `json:"mounted"`
 	MountPoint     *string `json:"mount_point"`
@@ -77,7 +77,7 @@ type Pool struct {
 // Subvolume represents a NASty subvolume (filesystem or block device).
 type Subvolume struct {
 	Name          string            `json:"name"`
-	Pool          string            `json:"pool"`
+	Filesystem    string            `json:"filesystem"`
 	SubvolumeType string            `json:"subvolume_type"` // "filesystem" or "block"
 	Path          string            `json:"path"`
 	UsedBytes     *uint64           `json:"used_bytes"`
@@ -92,7 +92,7 @@ type Subvolume struct {
 
 // SubvolumeCreateParams holds parameters for subvolume creation.
 type SubvolumeCreateParams struct {
-	Pool          string  `json:"pool"`
+	Filesystem    string  `json:"filesystem"`
 	Name          string  `json:"name"`
 	SubvolumeType string  `json:"subvolume_type"`
 	VolsizeBytes  *uint64 `json:"volsize_bytes,omitempty"`
@@ -102,28 +102,28 @@ type SubvolumeCreateParams struct {
 
 // Snapshot represents a NASty snapshot.
 type Snapshot struct {
-	Name      string `json:"name"`
-	Subvolume string `json:"subvolume"`
-	Pool      string `json:"pool"`
-	Path      string `json:"path"`
-	ReadOnly  bool   `json:"read_only"`
-	Parent    string `json:"parent,omitempty"`
+	Name       string `json:"name"`
+	Subvolume  string `json:"subvolume"`
+	Filesystem string `json:"filesystem"`
+	Path       string `json:"path"`
+	ReadOnly   bool   `json:"read_only"`
+	Parent     string `json:"parent,omitempty"`
 }
 
 // SnapshotCreateParams holds parameters for snapshot creation.
 type SnapshotCreateParams struct {
-	Pool      string `json:"pool"`
-	Subvolume string `json:"subvolume"`
-	Name      string `json:"name"`
-	ReadOnly  bool   `json:"read_only,omitempty"`
+	Filesystem string `json:"filesystem"`
+	Subvolume  string `json:"subvolume"`
+	Name       string `json:"name"`
+	ReadOnly   bool   `json:"read_only,omitempty"`
 }
 
 // SnapshotCloneParams holds parameters for cloning a snapshot into a new writable subvolume.
 type SnapshotCloneParams struct {
-	Pool      string `json:"pool"`
-	Subvolume string `json:"subvolume"`
-	Snapshot  string `json:"snapshot"`
-	NewName   string `json:"new_name"`
+	Filesystem string `json:"filesystem"`
+	Subvolume  string `json:"subvolume"`
+	Snapshot   string `json:"snapshot"`
+	NewName    string `json:"new_name"`
 }
 
 // NFSShare represents a NASty NFS share.
