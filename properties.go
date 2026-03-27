@@ -26,7 +26,8 @@ const (
 
 // Property values.
 const (
-	ManagedByValue = "nasty-csi"
+	ManagedByValue    = "nasty-csi"
+	PropertyValueTrue = "true"
 
 	ProtocolNFS    = "nfs"
 	ProtocolNVMeOF = "nvmeof"
