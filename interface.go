@@ -66,12 +66,18 @@ type ClientInterface interface {
 
 // Filesystem represents a NASty storage filesystem.
 type Filesystem struct {
-	Name           string  `json:"name"`
-	Mounted        bool    `json:"mounted"`
-	MountPoint     *string `json:"mount_point"`
-	TotalBytes     uint64  `json:"total_bytes"`
-	UsedBytes      uint64  `json:"used_bytes"`
-	AvailableBytes uint64  `json:"available_bytes"`
+	Name           string            `json:"name"`
+	Mounted        bool              `json:"mounted"`
+	MountPoint     *string           `json:"mount_point"`
+	TotalBytes     uint64            `json:"total_bytes"`
+	UsedBytes      uint64            `json:"used_bytes"`
+	AvailableBytes uint64            `json:"available_bytes"`
+	Options        FilesystemOptions `json:"options"`
+}
+
+// FilesystemOptions contains filesystem-level settings (bcachefs).
+type FilesystemOptions struct {
+	Encrypted *bool `json:"encrypted"`
 }
 
 // Subvolume represents a NASty subvolume (filesystem or block device).

@@ -22,6 +22,9 @@ const (
 
 	// Multi-cluster isolation.
 	PropertyClusterID = "nasty-csi:cluster_id"
+
+	// Filesystem-level encryption (bcachefs native).
+	PropertyEncrypted = "nasty-csi:encrypted"
 )
 
 // Property values.
@@ -50,6 +53,7 @@ type VolumeParams struct {
 	StorageClass   string
 	ClusterID      string
 	Adoptable      bool
+	Encrypted      bool
 }
 
 // VolumeProperties returns the xattr properties map for a CSI volume.
@@ -76,6 +80,9 @@ func VolumeProperties(p VolumeParams) map[string]string {
 	}
 	if p.ClusterID != "" {
 		props[PropertyClusterID] = p.ClusterID
+	}
+	if p.Encrypted {
+		props[PropertyEncrypted] = "true"
 	}
 	return props
 }
