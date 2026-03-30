@@ -98,12 +98,15 @@ type Subvolume struct {
 
 // SubvolumeCreateParams holds parameters for subvolume creation.
 type SubvolumeCreateParams struct {
-	Filesystem    string  `json:"filesystem"`
-	Name          string  `json:"name"`
-	SubvolumeType string  `json:"subvolume_type"`
-	VolsizeBytes  *uint64 `json:"volsize_bytes,omitempty"`
-	Compression   string  `json:"compression,omitempty"`
-	Comments      string  `json:"comments,omitempty"`
+	Filesystem       string  `json:"filesystem"`
+	Name             string  `json:"name"`
+	SubvolumeType    string  `json:"subvolume_type"`
+	VolsizeBytes     *uint64 `json:"volsize_bytes,omitempty"`
+	Compression      string  `json:"compression,omitempty"`
+	Comments         string  `json:"comments,omitempty"`
+	ForegroundTarget string  `json:"foreground_target,omitempty"`
+	BackgroundTarget string  `json:"background_target,omitempty"`
+	PromoteTarget    string  `json:"promote_target,omitempty"`
 }
 
 // Snapshot represents a NASty snapshot.
