@@ -33,12 +33,7 @@ func FindManagedVolumes(ctx context.Context, client nastygo.ClientInterface, clu
 
 // FindManagedSnapshots finds all snapshots managed by nasty-csi.
 func FindManagedSnapshots(ctx context.Context, client nastygo.ClientInterface, clusterID string) ([]SnapshotInfo, error) {
-	snaps, err := client.ListSnapshots(ctx, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to list snapshots: %w", err)
-	}
-
-	// Find managed subvolumes to cross-reference snapshot ownership
+	// Find managed subvolumes first to determine which filesystems to query
 	subvols, err := client.FindSubvolumesByProperty(ctx, nastygo.PropertyManagedBy, nastygo.ManagedByValue, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to find managed subvolumes: %w", err)
@@ -51,6 +46,7 @@ func FindManagedSnapshots(ctx context.Context, client nastygo.ClientInterface, c
 		volumeID string
 		protocol string
 	})
+	filesystems := make(map[string]struct{})
 	for _, sv := range subvols {
 		volumeID := sv.Properties[nastygo.PropertyCSIVolumeName]
 		protocol := sv.Properties[nastygo.PropertyProtocol]
@@ -60,11 +56,22 @@ func FindManagedSnapshots(ctx context.Context, client nastygo.ClientInterface, c
 				volumeID string
 				protocol string
 			}{volumeID: volumeID, protocol: protocol}
+			filesystems[sv.Filesystem] = struct{}{}
 		}
 	}
 
+	// List snapshots from each filesystem that has managed subvolumes
+	var allSnaps []nastygo.Snapshot
+	for fs := range filesystems {
+		snaps, err := client.ListSnapshots(ctx, fs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list snapshots in filesystem %s: %w", fs, err)
+		}
+		allSnaps = append(allSnaps, snaps...)
+	}
+
 	var snapshots []SnapshotInfo
-	for _, snap := range snaps {
+	for _, snap := range allSnaps {
 		subvolKey := snap.Filesystem + "/" + snap.Subvolume
 		meta, ok := managedSubvols[subvolKey]
 		if !ok {
