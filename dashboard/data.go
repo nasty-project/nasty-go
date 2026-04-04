@@ -27,8 +27,8 @@ func FindManagedVolumes(ctx context.Context, client nastygo.ClientInterface, clu
 	if err != nil {
 		return nil, err
 	}
-	volumes := extractVolumes(subvols)
-	return filterByClusterID(volumes, clusterID), nil
+	volumes := ExtractVolumes(subvols)
+	return FilterByClusterID(volumes, clusterID), nil
 }
 
 // FindManagedSnapshots finds all snapshots managed by nasty-csi.
@@ -371,8 +371,8 @@ func getISCSITargetDetails(ctx context.Context, client nastygo.ClientInterface, 
 	}, nil
 }
 
-// extractVolumes extracts VolumeInfo from pre-fetched managed subvolumes (no API calls).
-func extractVolumes(subvols []nastygo.Subvolume) []VolumeInfo {
+// ExtractVolumes extracts VolumeInfo from pre-fetched managed subvolumes (no API calls).
+func ExtractVolumes(subvols []nastygo.Subvolume) []VolumeInfo {
 	var volumes []VolumeInfo
 	for _, sv := range subvols {
 		volumeID := sv.Properties[nastygo.PropertyCSIVolumeName]
@@ -408,9 +408,9 @@ func extractClones(_ []nastygo.Subvolume) []CloneInfo {
 	return clones
 }
 
-// filterByClusterID filters volumes to only include those matching the cluster ID.
+// FilterByClusterID filters volumes to only include those matching the cluster ID.
 // Volumes with no ClusterID (legacy) are always included.
-func filterByClusterID(volumes []VolumeInfo, clusterID string) []VolumeInfo {
+func FilterByClusterID(volumes []VolumeInfo, clusterID string) []VolumeInfo {
 	if clusterID == "" {
 		return volumes
 	}
