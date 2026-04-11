@@ -61,6 +61,7 @@ type Client struct {
 	pending       map[string]chan *Response
 	closeCh       chan struct{}
 	metrics       ClientMetrics
+	onReconnect   func() // Called asynchronously after successful reconnection
 	url           string
 	apiKey        string
 	connectedAt   time.Time // Track connection start time for metrics
@@ -532,6 +533,7 @@ func (c *Client) reinitializeConnection() bool {
 	}
 
 	klog.Info("Successfully reinitialized WebSocket connection")
+	c.notifyReconnect()
 	return true
 }
 
@@ -617,10 +619,31 @@ func (c *Client) reconnect() bool {
 		}
 
 		klog.Infof("Successfully reconnected on attempt %d", attempt)
+		c.notifyReconnect()
 		return true
 	}
 
 	return false
+}
+
+// SetOnReconnect registers a callback that is invoked asynchronously after
+// the WebSocket connection is successfully re-established following a drop.
+// This allows consumers (e.g., CSI drivers) to trigger recovery actions
+// like re-establishing storage sessions.
+func (c *Client) SetOnReconnect(fn func()) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onReconnect = fn
+}
+
+// notifyReconnect fires the onReconnect callback in a goroutine.
+func (c *Client) notifyReconnect() {
+	c.mu.Lock()
+	fn := c.onReconnect
+	c.mu.Unlock()
+	if fn != nil {
+		go fn()
+	}
 }
 
 // pingLoop sends periodic pings to keep the connection alive.
