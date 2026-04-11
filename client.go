@@ -687,6 +687,13 @@ func (c *Client) pingLoop() {
 	}
 }
 
+// IsConnected returns true if the WebSocket connection is active and not closed.
+func (c *Client) IsConnected() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return !c.closed && !c.reconnecting && c.conn != nil
+}
+
 // Close closes the client connection.
 func (c *Client) Close() {
 	c.mu.Lock()

@@ -62,6 +62,7 @@ type ClientInterface interface {
 
 	// Connection
 	Close()
+	IsConnected() bool
 }
 
 // Filesystem represents a NASty storage filesystem.
