@@ -108,6 +108,8 @@ type SubvolumeCreateParams struct {
 	ForegroundTarget string  `json:"foreground_target,omitempty"`
 	BackgroundTarget string  `json:"background_target,omitempty"`
 	PromoteTarget    string  `json:"promote_target,omitempty"`
+	MetadataTarget   string  `json:"metadata_target,omitempty"`
+	DataReplicas     *uint32 `json:"data_replicas,omitempty"`
 }
 
 // Snapshot represents a NASty snapshot.
