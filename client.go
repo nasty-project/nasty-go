@@ -735,14 +735,7 @@ func (c *Client) CreateSubvolume(ctx context.Context, params SubvolumeCreatePara
 	klog.V(4).Infof("Creating subvolume %s/%s (type=%s)", params.Filesystem, params.Name, params.SubvolumeType)
 
 	var result Subvolume
-	if err := c.Call(ctx, "subvolume.create", map[string]interface{}{
-			"filesystem":     params.Filesystem,
-			"name":           params.Name,
-			"subvolume_type": params.SubvolumeType,
-			"volsize_bytes":  params.VolsizeBytes,
-			"compression":    params.Compression,
-			"comments":       params.Comments,
-		}, &result); err != nil {
+	if err := c.Call(ctx, "subvolume.create", params, &result); err != nil {
 		return nil, fmt.Errorf("failed to create subvolume %s/%s: %w", params.Filesystem, params.Name, err)
 	}
 
