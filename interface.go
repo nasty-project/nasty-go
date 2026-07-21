@@ -88,6 +88,7 @@ type Subvolume struct {
 	SubvolumeType string            `json:"subvolume_type"` // "filesystem" or "block"
 	Path          string            `json:"path"`
 	UsedBytes     *uint64           `json:"used_bytes"`
+	QuotaBytes    *uint64           `json:"quota_bytes"`
 	Compression   *string           `json:"compression"`
 	Comments      *string           `json:"comments"`
 	VolsizeBytes  *uint64           `json:"volsize_bytes"`
