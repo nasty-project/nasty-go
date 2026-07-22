@@ -83,19 +83,22 @@ type FilesystemOptions struct {
 
 // Subvolume represents a NASty subvolume (filesystem or block device).
 type Subvolume struct {
-	Name          string            `json:"name"`
-	Filesystem    string            `json:"filesystem"`
-	SubvolumeType string            `json:"subvolume_type"` // "filesystem" or "block"
-	Path          string            `json:"path"`
-	UsedBytes     *uint64           `json:"used_bytes"`
-	QuotaBytes    *uint64           `json:"quota_bytes"`
-	Compression   *string           `json:"compression"`
-	Comments      *string           `json:"comments"`
-	VolsizeBytes  *uint64           `json:"volsize_bytes"`
-	BlockDevice   *string           `json:"block_device"`
-	Snapshots     []string          `json:"snapshots"`
-	Owner         *string           `json:"owner"`
-	Properties    map[string]string `json:"properties"`
+	Name                string            `json:"name"`
+	Filesystem          string            `json:"filesystem"`
+	SubvolumeType       string            `json:"subvolume_type"` // "filesystem" or "block"
+	Path                string            `json:"path"`
+	UsedBytes           *uint64           `json:"used_bytes"`
+	QuotaBytes          *uint64           `json:"quota_bytes"`
+	Compression         *string           `json:"compression"`
+	Comments            *string           `json:"comments"`
+	VolsizeBytes        *uint64           `json:"volsize_bytes"`
+	BlockDevice         *string           `json:"block_device"`
+	BlockFilesystem     *string           `json:"block_filesystem,omitempty"`
+	BlockFilesystemUUID *string           `json:"block_filesystem_uuid,omitempty"`
+	Snapshots           []string          `json:"snapshots"`
+	Owner               *string           `json:"owner"`
+	Properties          map[string]string `json:"properties"`
+	Created             bool              `json:"created,omitempty"`
 }
 
 // SubvolumeCreateParams holds parameters for subvolume creation.
@@ -111,6 +114,7 @@ type SubvolumeCreateParams struct {
 	PromoteTarget    string  `json:"promote_target,omitempty"`
 	MetadataTarget   string  `json:"metadata_target,omitempty"`
 	DataReplicas     *uint32 `json:"data_replicas,omitempty"`
+	BlockFilesystem  string  `json:"block_filesystem,omitempty"`
 }
 
 // Snapshot represents a NASty snapshot.
@@ -205,8 +209,8 @@ type ISCSITarget struct {
 
 // ISCSITargetCreateParams holds parameters for iSCSI target creation.
 type ISCSITargetCreateParams struct {
-	Name       string   `json:"name"`
-	DevicePath string   `json:"device_path,omitempty"`
+	Name       string     `json:"name"`
+	DevicePath string     `json:"device_path,omitempty"`
 	Acls       []ACLEntry `json:"acls,omitempty"`
 }
 
