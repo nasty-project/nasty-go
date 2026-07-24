@@ -125,6 +125,7 @@ type Snapshot struct {
 	Path       string `json:"path"`
 	ReadOnly   bool   `json:"read_only"`
 	Parent     string `json:"parent,omitempty"`
+	CreatedAt  *int64 `json:"created_at,omitempty"`
 }
 
 // SnapshotCreateParams holds parameters for snapshot creation.

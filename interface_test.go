@@ -71,3 +71,36 @@ func TestSubvolumeWithoutCreatedFieldIsConservativelyExisting(t *testing.T) {
 		t.Fatal("Created = true for an older response without creation authority")
 	}
 }
+
+func TestSnapshotCreationTimeIsBackwardCompatible(t *testing.T) {
+	const timestamp int64 = 1700000123
+	for _, tt := range []struct {
+		name    string
+		payload string
+		want    *int64
+	}{
+		{name: "authoritative timestamp", payload: `{"name":"snap","created_at":1700000123}`, want: int64Ptr(timestamp)},
+		{name: "older response", payload: `{"name":"snap"}`},
+		{name: "null timestamp", payload: `{"name":"snap","created_at":null}`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var snapshot Snapshot
+			if err := json.Unmarshal([]byte(tt.payload), &snapshot); err != nil {
+				t.Fatalf("decode snapshot: %v", err)
+			}
+			if tt.want == nil {
+				if snapshot.CreatedAt != nil {
+					t.Fatalf("CreatedAt = %v, want nil", snapshot.CreatedAt)
+				}
+				return
+			}
+			if snapshot.CreatedAt == nil || *snapshot.CreatedAt != *tt.want {
+				t.Fatalf("CreatedAt = %v, want %d", snapshot.CreatedAt, *tt.want)
+			}
+		})
+	}
+}
+
+func int64Ptr(value int64) *int64 {
+	return &value
+}
