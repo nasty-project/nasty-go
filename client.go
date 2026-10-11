@@ -24,6 +24,9 @@ var (
 	ErrAuthenticationRejected = errors.New("authentication failed: NASty rejected API token - verify the token is correct and not expired")
 	ErrClientClosed           = errors.New("client is closed")
 	ErrConnectionClosed       = errors.New("connection closed while waiting for response")
+	// ErrUncertainOutcome means a non-read-only RPC may have reached the server
+	// but its outcome was not received. Reconcile state before retrying it.
+	ErrUncertainOutcome = errors.New("RPC outcome is uncertain")
 	// ErrDatasetNotFound is kept for compatibility with FindSubvolumeByCSIVolumeName.
 	ErrDatasetNotFound = errors.New("dataset not found")
 	// ErrFilesystemNotFound is returned when a requested filesystem is not found.
@@ -286,8 +289,15 @@ func (c *Client) connect() error {
 
 	conn.SetReadLimit(10 * 1024 * 1024)
 
+	c.mu.Lock()
+	if c.closed {
+		c.mu.Unlock()
+		conn.CloseNow()
+		return ErrClientClosed
+	}
 	c.conn = conn
 	c.connectedAt = time.Now()
+	c.mu.Unlock()
 
 	c.metrics.SetConnectionStatus(true)
 
@@ -358,7 +368,9 @@ func isConnectionError(err error) bool {
 		strings.Contains(errStr, "i/o timeout")
 }
 
-// Call makes a JSON-RPC 2.0 call with automatic retry on connection failures.
+// Call retries connection failures only when the request was not sent or the
+// method is explicitly known to be read-only. Mutations with a lost outcome
+// return ErrUncertainOutcome rather than being blindly replayed.
 func (c *Client) Call(ctx context.Context, method string, params interface{}, result interface{}) error {
 	start := time.Now()
 	defer func() { c.metrics.RecordMessageDuration(method, time.Since(start)) }()
@@ -373,6 +385,9 @@ func (c *Client) Call(ctx context.Context, method string, params interface{}, re
 		}
 
 		lastErr = err
+		if errors.Is(err, ErrUncertainOutcome) {
+			return err
+		}
 
 		if !isConnectionError(err) {
 			return err
@@ -409,10 +424,17 @@ func (c *Client) Call(ctx context.Context, method string, params interface{}, re
 
 // callOnce makes a single JSON-RPC 2.0 call attempt.
 func (c *Client) callOnce(ctx context.Context, method string, params interface{}, result interface{}) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
 		return ErrClientClosed
+	}
+	if c.conn == nil || c.reconnecting {
+		c.mu.Unlock()
+		return ErrConnectionClosed // No request was attempted; retry is safe.
 	}
 
 	id := strconv.FormatUint(atomic.AddUint64(&c.reqID, 1), 10)
@@ -434,7 +456,8 @@ func (c *Client) callOnce(ctx context.Context, method string, params interface{}
 	if err != nil {
 		delete(c.pending, id)
 		c.mu.Unlock()
-		return fmt.Errorf("failed to send request: %w", err)
+		// A write error does not prove the server received nothing.
+		return rpcOutcomeError(method, fmt.Errorf("failed to send request: %w", err))
 	}
 	c.metrics.RecordMessage("sent")
 	c.mu.Unlock()
@@ -442,7 +465,7 @@ func (c *Client) callOnce(ctx context.Context, method string, params interface{}
 	select {
 	case resp, ok := <-respCh:
 		if !ok {
-			return ErrConnectionClosed
+			return rpcOutcomeError(method, ErrConnectionClosed)
 		}
 		c.metrics.RecordMessage("received")
 		if resp.Error != nil {
@@ -450,7 +473,7 @@ func (c *Client) callOnce(ctx context.Context, method string, params interface{}
 		}
 		if result != nil && resp.Result != nil {
 			if err := json.Unmarshal(resp.Result, result); err != nil {
-				return fmt.Errorf("failed to unmarshal result: %w", err)
+				return rpcOutcomeError(method, fmt.Errorf("failed to unmarshal result: %w", err))
 			}
 		}
 		return nil
@@ -458,10 +481,30 @@ func (c *Client) callOnce(ctx context.Context, method string, params interface{}
 		c.mu.Lock()
 		delete(c.pending, id)
 		c.mu.Unlock()
-		return ctx.Err()
+		return rpcOutcomeError(method, ctx.Err())
 	case <-c.closeCh:
-		return ErrClientClosed
+		return rpcOutcomeError(method, ErrClientClosed)
 	}
+}
+
+// Keep an explicit allowlist: NASty mutations, including updates and deletes,
+// must not be assumed idempotent merely because of their method suffix.
+func readOnlyRPC(method string) bool {
+	switch method {
+	case "fs.get", "fs.list", "subvolume.get", "subvolume.list_all", "subvolume.find_by_property",
+		"snapshot.list", "share.nfs.get", "share.nfs.list", "share.smb.get", "share.smb.list",
+		"share.iscsi.list", "share.nvmeof.list":
+		return true
+	default:
+		return false
+	}
+}
+
+func rpcOutcomeError(method string, err error) error {
+	if readOnlyRPC(method) {
+		return err
+	}
+	return fmt.Errorf("%w: %s: %w", ErrUncertainOutcome, method, err)
 }
 
 // readLoop reads responses from WebSocket.
@@ -511,6 +554,12 @@ func (c *Client) handleReadError(err error) bool {
 	if c.reconnect() {
 		klog.Info("Successfully reconnected to storage WebSocket")
 		return true
+	}
+	c.mu.Lock()
+	closed := c.closed
+	c.mu.Unlock()
+	if closed {
+		return false
 	}
 
 	return c.reinitializeConnection()
