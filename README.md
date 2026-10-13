@@ -23,6 +23,24 @@ subvol, err := client.CreateSubvolume(ctx, nastygo.SubvolumeCreateParams{
 })
 ```
 
+## Retry safety
+
+The client reconnects automatically, but only explicitly allowlisted read-only
+RPCs are replayed after a lost response. Requests not yet attempted may be retried.
+Mutations and unknown methods are **not** assumed idempotent, including updates
+and deletes.
+
+If a mutation may have reached the server but its response is lost, times out,
+or cannot be decoded, its error wraps `nastygo.ErrUncertainOutcome`. Check with
+`errors.Is(err, nastygo.ErrUncertainOutcome)` and reconcile server state before
+retrying (for example, look up the requested subvolume by its stable identity).
+This error does not mean the operation failed or was rolled back. It also wraps
+the underlying cause, including context cancellation/deadline errors.
+
+A definitive API error is returned unchanged. Cancellation before attempting a
+request does not produce an uncertain-outcome error. Error messages do not include
+request parameters, results, or authentication tokens.
+
 ## Structure
 
 - `client.go` — WebSocket client with reconnection and JSON-RPC transport
