@@ -41,9 +41,29 @@ A definitive API error is returned unchanged. Cancellation before attempting a
 request does not produce an uncertain-outcome error. Error messages do not include
 request parameters, results, or authentication tokens.
 
+## Creation-time properties (draft appliance API)
+
+`CreateSubvolumeAtomic`, `CloneSubvolumeAtomic` and `CloneSnapshotAtomic` accept
+initial user properties and call the corresponding `_atomic` RPC methods. They
+require the appliance's staged-publication API; an unsupported method is an error,
+not a reason to fall back to legacy creation followed by property writes.
+
+The optional `AtomicProvisioner` interface leaves `ClientInterface` unchanged.
+Atomic clones replace inherited user properties with the destination properties;
+do not rely on a source volume's CSI identity/presentation IDs being inherited.
+Nil properties are serialized as an empty object, not JSON null.
+
+These mutations retain the same `ErrUncertainOutcome` behavior described above.
+After a lost response, reconcile the final destination. An absent final path
+does not prove no allocation occurred: interrupted private reservations require
+explicit appliance-side recovery. There is no automatic adoption, repair or
+deletion here. This SDK extension alone does not switch CSI provisioning or prove
+bcachefs crash/power-loss durability.
+
 ## Structure
 
 - `client.go` — WebSocket client with reconnection and JSON-RPC transport
 - `interface.go` — API types and client interface definition
 - `properties.go` — CSI xattr property keys and helpers
+- `provisioning.go` — optional staged-publication RPC extension
 - `dashboard/` — In-cluster CSI dashboard data types
