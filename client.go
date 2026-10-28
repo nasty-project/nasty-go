@@ -69,6 +69,8 @@ type Client struct {
 	apiKey        string
 	connectedAt   time.Time // Track connection start time for metrics
 	retryInterval time.Duration
+	pingInterval  time.Duration // zero means defaultPingInterval
+	pingTimeout   time.Duration // zero means defaultPingTimeout
 	reqID         uint64
 	maxRetries    int
 	closed        bool
@@ -627,6 +629,15 @@ func (c *Client) reconnect() bool {
 
 	c.metrics.SetConnectionStatus(false)
 
+	// Their responses are lost with the connection; tell callers now rather
+	// than after the first backoff, so they can retry or report uncertainty.
+	c.mu.Lock()
+	for _, ch := range c.pending {
+		close(ch)
+	}
+	c.pending = make(map[string]chan *Response)
+	c.mu.Unlock()
+
 	for attempt := 1; attempt <= c.maxRetries; attempt++ {
 		c.metrics.RecordReconnection()
 		shift := attempt - 1
@@ -695,18 +706,39 @@ func (c *Client) notifyReconnect() {
 	}
 }
 
-// pingLoop sends periodic pings to keep the connection alive.
+const (
+	defaultPingInterval = 20 * time.Second
+	defaultPingTimeout  = 10 * time.Second
+	// maxPingFailures consecutive failed pings (about a minute by default)
+	// mark the connection dead.
+	maxPingFailures = 3
+)
+
+// pingLoop sends periodic pings and closes a connection whose peer stopped
+// answering. coder/websocket only notices a dead peer through a read error,
+// and a silent peer never produces one; closing the connection makes readLoop
+// fail and run the normal reconnect.
 func (c *Client) pingLoop() {
-	ticker := time.NewTicker(20 * time.Second)
+	interval, timeout := c.pingInterval, c.pingTimeout
+	if interval <= 0 {
+		interval = defaultPingInterval
+	}
+	if timeout <= 0 {
+		timeout = defaultPingTimeout
+	}
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	failures := 0
 	for {
 		select {
 		case <-ticker.C:
 			c.mu.Lock()
 			if c.closed || c.conn == nil || c.reconnecting {
+				reconnecting := c.reconnecting
 				c.mu.Unlock()
-				if c.reconnecting {
+				if reconnecting {
+					failures = 0
 					continue
 				}
 				return
@@ -719,14 +751,22 @@ func (c *Client) pingLoop() {
 			conn := c.conn
 			c.mu.Unlock()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
 			err := conn.Ping(ctx)
 			cancel()
 
 			if err != nil {
-				klog.Warningf("Failed to send ping: %v", err)
+				failures++
+				klog.Warningf("Failed to send ping (%d/%d): %v", failures, maxPingFailures, err)
+				if failures >= maxPingFailures {
+					klog.Warning("Storage API stopped answering pings; closing the connection to reconnect")
+					//nolint:errcheck,gosec // G104: readLoop reports the resulting read error
+					conn.CloseNow()
+					failures = 0
+				}
 				continue
 			}
+			failures = 0
 
 			klog.V(6).Info("Sent WebSocket ping")
 
