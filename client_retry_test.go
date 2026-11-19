@@ -18,6 +18,8 @@ import (
 // The server authenticates normally, then drops the first RPC's response.
 func droppedResponseClient(t *testing.T, mode string) (*Client, *atomic.Int32) {
 	t.Helper()
+	atomicMethod := strings.HasPrefix(mode, "atomic-")
+	mode = strings.TrimPrefix(mode, "atomic-")
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := websocket.Accept(w, r, nil)
@@ -38,9 +40,24 @@ func droppedResponseClient(t *testing.T, mode string) (*Client, *atomic.Int32) {
 			if err := wsjson.Read(ctx, conn, &request); err != nil {
 				return
 			}
+			if atomicMethod {
+				if !strings.HasSuffix(request.Method, "_atomic") {
+					t.Errorf("atomic call used legacy method %s", request.Method)
+				}
+				params, ok := request.Params.(map[string]interface{})
+				if !ok {
+					t.Error("atomic params are not an object")
+				} else if props, ok := params["initial_properties"].(map[string]interface{}); !ok || props == nil {
+					t.Error("atomic properties must be an object, not null/omitted")
+				}
+			}
 			if calls.Add(1) == 1 {
-				if mode == "api-error" {
-					if err := wsjson.Write(ctx, conn, map[string]any{"id": request.ID, "error": &Error{Code: -32602, Message: "invalid parameter"}}); err != nil {
+				if mode == "api-error" || mode == "method-not-found" {
+					apiError := &Error{Code: -32602, Message: "invalid parameter"}
+					if mode == "method-not-found" {
+						apiError = &Error{Code: -32601, Message: "method not found"}
+					}
+					if err := wsjson.Write(ctx, conn, map[string]any{"id": request.ID, "error": apiError}); err != nil {
 						return
 					}
 					continue
